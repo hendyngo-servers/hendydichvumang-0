@@ -2,6 +2,9 @@ name: Render Live Verification
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
   schedule:
     - cron: '*/15 * * * *'
 
@@ -14,22 +17,26 @@ concurrency:
 
 jobs:
   verify-render:
-    if: ${{ vars.RENDER_LIVE_CHECK_ENABLED == 'true' }}
+    if: >-
+      ${{ vars.RENDER_LIVE_CHECK_ENABLED == 'true' &&
+      (github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository)) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     env:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_WORKSPACE_ID: ${{ vars.RENDER_WORKSPACE_ID }}
       RENDER_STATIC_SERVICE_ID: ${{ vars.RENDER_STATIC_SERVICE_ID }}
       RENDER_API_SERVICE_ID: ${{ vars.RENDER_API_SERVICE_ID }}
-      STATIC_SITE_URL: ${{ vars.STATIC_SITE_URL }}
-      API_BASE_URL: ${{ vars.API_BASE_URL }}
       RENDER_AIOGRAM_CHECK_ENABLED: ${{ vars.RENDER_AIOGRAM_CHECK_ENABLED }}
       RENDER_AIOGRAM_SERVICE_ID: ${{ vars.RENDER_AIOGRAM_SERVICE_ID }}
-      AIOGRAM_BASE_URL: ${{ vars.AIOGRAM_BASE_URL }}
-      REPOSITORY_URL: https://github.com/hendyngo-servers/hendydichvumang
+      RENDER_DEPLOY_WAIT_ATTEMPTS: "18"
+      RENDER_DEPLOY_WAIT_INTERVAL_MS: "15000"
+      REPOSITORY_URL: https://github.com/hendyngo-servers/hendydichvumang-0
       EXPECTED_BRANCH: main
-      EXPECTED_COMMIT_SHA: ${{ github.sha }}
+      EXPECTED_COMMIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -40,5 +47,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      - name: Verify Render service states and public endpoints
+      - name: Detect Render domains and verify Live deployment
         run: npm run verify:render-live

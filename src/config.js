@@ -57,7 +57,15 @@ export function loadConfig(env = process.env) {
   const rawWebhookSecret = String(env.TELEGRAM_WEBHOOK_SECRET || '').trim();
   const adminUsername = String(env.ADMIN_USERNAME || 'admin').trim();
   const adminPassword = String(env.ADMIN_PASSWORD || '');
+  const botServiceKey = String(env.BOT_SERVICE_KEY || '').trim();
   const sslMode = String(env.PGSSLMODE || (isProduction ? 'require' : 'disable')).trim().toLowerCase();
+
+  if (botServiceKey && (
+    Buffer.byteLength(botServiceKey, 'utf8') < 32 ||
+    /^(replace-with|change-me|changeme|placeholder)/i.test(botServiceKey)
+  )) {
+    throw new Error('BOT_SERVICE_KEY phải là khóa bí mật ngẫu nhiên tối thiểu 32 byte; Render Blueprint có thể tự tạo khóa 256-bit.');
+  }
 
   if (!['disable', 'require', 'verify-full'].includes(sslMode)) {
     throw new Error('PGSSLMODE chỉ nhận disable, require hoặc verify-full.');
@@ -114,7 +122,7 @@ export function loadConfig(env = process.env) {
     adminUsername,
     adminPassword,
     adminTelegramId,
-    botServiceKey: String(env.BOT_SERVICE_KEY || '').trim(),
+    botServiceKey,
     renderApiKey: String(env.RENDER_API_KEY || '').trim(),
     renderWorkspaceId: String(env.RENDER_WORKSPACE_ID || '').trim(),
     publicApiUrl,
