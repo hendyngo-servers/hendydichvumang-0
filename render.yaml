@@ -55,15 +55,13 @@ services:
         generateValue: true
       - key: BOT1_TOKEN
         sync: false
-      # Bí danh cũ; chỉ gỡ sau khi BOT1_TOKEN hoạt động ổn định.
-      - key: BOT_TOKEN
-        sync: false
+      # BOT_TOKEN is accepted as a legacy alias in code; new deployments only set BOT1_TOKEN.
       - key: ADMIN_USERNAME
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
       - key: ADMIN_TELEGRAM_ID
-        sync: false
+        value: ""
       - key: TELEGRAM_GROUP_URL
         value: ""
       - key: TELEGRAM_CHANNEL_URL
@@ -97,9 +95,7 @@ services:
         value: "3.12.10"
       - key: BOT2_TOKEN
         sync: false
-      # Bí danh cũ; chỉ gỡ sau khi BOT2_TOKEN hoạt động ổn định.
-      - key: AIOGRAM_BOT_TOKEN
-        sync: false
+      # AIOGRAM_BOT_TOKEN remains a legacy code alias; new deployments use BOT2_TOKEN only.
       - key: AIOGRAM_WEBHOOK_SECRET
         generateValue: true
       - key: HENDY_API_BASE_URL

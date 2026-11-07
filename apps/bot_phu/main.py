@@ -113,7 +113,12 @@ async def on_startup(
     )
     runtime = dispatcher.get("runtime_status")
     if isinstance(runtime, dict):
-        runtime.update({"webhook_ready": True, "bot_id": str(me.id)})
+        runtime.update({
+            "webhook_ready": True,
+            "bot_id": str(me.id),
+            "bot_username": me.username,
+            "bot_first_name": me.first_name,
+        })
     logger.info("Aiogram webhook đã sẵn sàng tại %s; bot_id=%s", settings.webhook_path, me.id)
 
 
@@ -137,6 +142,7 @@ async def health(request: web.Request) -> web.Response:
         "database": "ready",
         "webhook": "ready",
         "bot_id": runtime.get("bot_id"),
+        "bot_username": runtime.get("bot_username"),
         "framework": "aiogram",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })

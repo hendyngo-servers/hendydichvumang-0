@@ -30,9 +30,10 @@ jobs:
       RENDER_WORKSPACE_ID: ${{ vars.RENDER_WORKSPACE_ID }}
       RENDER_STATIC_SERVICE_ID: ${{ vars.RENDER_STATIC_SERVICE_ID }}
       RENDER_API_SERVICE_ID: ${{ vars.RENDER_API_SERVICE_ID }}
-      RENDER_AIOGRAM_CHECK_ENABLED: ${{ vars.RENDER_AIOGRAM_CHECK_ENABLED }}
+      RENDER_AIOGRAM_CHECK_ENABLED: ${{ vars.RENDER_AIOGRAM_CHECK_ENABLED || 'auto' }}
       RENDER_AIOGRAM_SERVICE_ID: ${{ vars.RENDER_AIOGRAM_SERVICE_ID }}
       RENDER_DEPLOY_WAIT_ATTEMPTS: "18"
+      # Workspace, service IDs and public URLs are inferred from Render metadata unless explicitly overridden.
       RENDER_DEPLOY_WAIT_INTERVAL_MS: "15000"
       REPOSITORY_URL: https://github.com/hendyngo-servers/hendydichvumang-0
       EXPECTED_BRANCH: main
