@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeRepository, normalizeHttpsOrigin, unwrapService, unwrapLatestDeploy,
-  validateService, validateDeploy, findWorkspaceService, selectWorkspaceId, fetchAllRenderOwners, validateAiogramHealth
+  validateService, validateDeploy, findWorkspaceService, selectWorkspaceId, fetchAllRenderOwners, validateAiogramHealth,
+  normalizeCustomDomains
 } from '../scripts/render-live-check.js';
 
 const repository = 'https://github.com/hendyngo-servers/hendydichvumang-0';
