@@ -76,7 +76,7 @@ export function loadConfig(env = process.env) {
     throw new Error('PGSSLMODE chỉ nhận disable, require hoặc verify-full.');
   }
   if (isProduction && (adminPassword.length < 13 || isPlaceholderSecret(adminPassword))) {
-    throw new Error('ADMIN_PASSWORD phải là mật khẩu production hợp lệ, tối thiểu 13 ký tự và không dùng placeholder.');
+    throw new Error('ADMIN_PASSWORD phải là mật khẩu riêng hợp lệ, tối thiểu 13 ký tự và không dùng placeholder.');
   }
   if (isProduction && !adminUsername) throw new Error('ADMIN_USERNAME không được để trống.');
   if (botToken && !hasRandomSecretStrength(rawWebhookSecret, 32)) {
