@@ -1,7 +1,8 @@
 import 'dotenv/config';
+import { appendFile } from 'node:fs/promises';
 
 const RENDER_API_BASE = 'https://api.render.com/v1';
-const EXPECTED_REPOSITORY = process.env.REPOSITORY_URL || 'https://github.com/hendyngo-servers/hendydichvumang';
+const EXPECTED_REPOSITORY = process.env.REPOSITORY_URL || 'https://github.com/hendyngo-servers/hendydichvumang-0';
 const EXPECTED_BRANCH = process.env.EXPECTED_BRANCH || 'main';
 const EXPECTED_COMMIT = process.env.EXPECTED_COMMIT_SHA || process.env.GITHUB_SHA || '';
 
@@ -92,6 +93,37 @@ async function fetchJson(url, options = {}) {
 async function renderGet(apiKey, path) {
   return fetchJson(RENDER_API_BASE + path, { headers: { Authorization: 'Bearer ' + apiKey } });
 }
+
+async function waitForLiveDeploy(apiKey, serviceId, expectedCommit = EXPECTED_COMMIT, env = process.env) {
+  const attemptsValue = Number(env.RENDER_DEPLOY_WAIT_ATTEMPTS || 1);
+  const intervalValue = Number(env.RENDER_DEPLOY_WAIT_INTERVAL_MS || 15000);
+  const attempts = Number.isInteger(attemptsValue) ? Math.min(Math.max(attemptsValue, 1), 40) : 1;
+  const intervalMs = Number.isInteger(intervalValue) ? Math.min(Math.max(intervalValue, 1000), 60000) : 15000;
+  let latest = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    latest = unwrapLatestDeploy(await renderGet(
+      apiKey,
+      '/services/' + encodeURIComponent(serviceId) + '/deploys?limit=1'
+    ));
+    if (
+      latest.status === 'live' &&
+      (!expectedCommit || latest.commit?.id === expectedCommit)
+    ) {
+      return latest;
+    }
+    if (attempt < attempts) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+
+  throw new Error(
+    'Deployment của service ' + serviceId + ' chưa LIVE với commit yêu cầu sau ' + attempts +
+    ' lần kiểm tra. Trạng thái: ' + String(latest?.status || 'không rõ') +
+    '; commit: ' + String(latest?.commit?.id || 'không rõ') +
+    (expectedCommit ? '; mong đợi: ' + expectedCommit : '') + '.'
+  );
+}
 async function fetchPublic(url, label) {
   const response = await fetch(url, {
     redirect: 'follow',
@@ -146,11 +178,11 @@ async function resolveService(apiKey, workspaceId, serviceId, expected) {
   return findWorkspaceService(page, { ...expected, workspaceId });
 }
 
-async function verifyOneService(apiKey, workspaceId, serviceId, expected) {
+async function verifyOneService(apiKey, workspaceId, serviceId, expected, env = process.env, expectedCommit = EXPECTED_COMMIT) {
   const service = await resolveService(apiKey, workspaceId, serviceId, expected);
   const url = validateService(service, { ...expected, id: service.id, workspaceId, branch: EXPECTED_BRANCH, repository: EXPECTED_REPOSITORY });
-  const deploy = unwrapLatestDeploy(await renderGet(apiKey, '/services/' + encodeURIComponent(service.id) + '/deploys?limit=1'));
-  validateDeploy(deploy, EXPECTED_COMMIT);
+  const deploy = await waitForLiveDeploy(apiKey, service.id, expectedCommit, env);
+  validateDeploy(deploy, expectedCommit);
   return {
     name: service.name, id: service.id, type: service.type, url,
     deployId: deploy.id, deployStatus: deploy.status,
@@ -165,7 +197,7 @@ export function validateAiogramHealth(payload) {
   return true;
 }
 
-async function checkAiogramService(apiKey, workspaceId, serviceId, env = process.env) {
+async function checkAiogramService(apiKey, workspaceId, serviceId, env = process.env, expectedCommit = EXPECTED_COMMIT) {
   const service = await resolveService(apiKey, workspaceId, serviceId, {
     type: 'web_service', name: 'hendydichvumang-aiogram-bot'
   });
@@ -178,8 +210,8 @@ async function checkAiogramService(apiKey, workspaceId, serviceId, env = process
     ? normalizeHttpsOrigin(env.AIOGRAM_BASE_URL, 'AIOGRAM_BASE_URL')
     : url;
   if (configuredUrl !== url) throw new Error('AIOGRAM_BASE_URL không trùng URL Render cấp cho service.');
-  const deploy = unwrapLatestDeploy(await renderGet(apiKey, '/services/' + encodeURIComponent(service.id) + '/deploys?limit=1'));
-  validateDeploy(deploy, EXPECTED_COMMIT);
+  const deploy = await waitForLiveDeploy(apiKey, service.id, expectedCommit, env);
+  validateDeploy(deploy, expectedCommit);
   const health = await fetchPublic(url + '/healthz', 'Aiogram health check');
   let payload;
   try { payload = JSON.parse(health.body); } catch { throw new Error('Aiogram /healthz không trả JSON hợp lệ.'); }
@@ -196,12 +228,13 @@ export async function verifyRenderDeployment(env = process.env) {
   const workspaceId = String(env.RENDER_WORKSPACE_ID || '').trim();
   const staticServiceId = String(env.RENDER_STATIC_SERVICE_ID || '').trim();
   const apiServiceId = String(env.RENDER_API_SERVICE_ID || '').trim();
+  const expectedCommit = String(env.EXPECTED_COMMIT_SHA || EXPECTED_COMMIT || '');
   if (!apiKey || !workspaceId) {
     throw new Error('Cần RENDER_API_KEY và RENDER_WORKSPACE_ID. Service ID có thể để trống vì script tự tìm theo tên.');
   }
   const [staticService, apiService] = await Promise.all([
-    verifyOneService(apiKey, workspaceId, staticServiceId, { type: 'static_site', name: 'hendydichvumang-site' }),
-    verifyOneService(apiKey, workspaceId, apiServiceId, { type: 'web_service', name: 'hendydichvumang-api' })
+    verifyOneService(apiKey, workspaceId, staticServiceId, { type: 'static_site', name: 'hendydichvumang-site' }, env, expectedCommit),
+    verifyOneService(apiKey, workspaceId, apiServiceId, { type: 'web_service', name: 'hendydichvumang-api' }, env, expectedCommit)
   ]);
   const staticUrl = normalizeHttpsOrigin(env.STATIC_SITE_URL || staticService.url, 'STATIC_SITE_URL');
   const apiUrl = normalizeHttpsOrigin(env.API_BASE_URL || apiService.url, 'API_BASE_URL');
@@ -217,20 +250,40 @@ export async function verifyRenderDeployment(env = process.env) {
   };
   if (String(env.RENDER_AIOGRAM_CHECK_ENABLED || '').toLowerCase() === 'true') {
     const aiogramServiceId = String(env.RENDER_AIOGRAM_SERVICE_ID || '').trim();
-    services.aiogramBot = await checkAiogramService(apiKey, workspaceId, aiogramServiceId, env);
+    services.aiogramBot = await checkAiogramService(apiKey, workspaceId, aiogramServiceId, env, expectedCommit);
   }
   return {
     result: 'LIVE', checkedAt: new Date().toISOString(),
-    expectedCommit: EXPECTED_COMMIT || null, services
+    expectedCommit: expectedCommit || null, services
   };
 }
+async function appendGithubSummary(result) {
+  const summaryPath = String(process.env.GITHUB_STEP_SUMMARY || '').trim();
+  if (!summaryPath) return;
+
+  const lines = [
+    '## HENDY — Render deployment đã xác minh',
+    '',
+    '| Thành phần | Domain tự nhận diện | Deploy |',
+    '|---|---|---|',
+    '| Website / Static Site | ' + result.services.staticSite.url + ' | ' + result.services.staticSite.deployStatus + ' |',
+    '| API Node.js | ' + result.services.apiWebService.url + ' | ' + result.services.apiWebService.deployStatus + ' |'
+  ];
+  if (result.services.aiogramBot) {
+    lines.push('| Aiogram | ' + result.services.aiogramBot.url + ' | ' + result.services.aiogramBot.deployStatus + ' |');
+  }
+  lines.push('', 'Mini App: ' + result.services.staticSite.url + '/app');
+  await appendFile(summaryPath, lines.join('\n') + '\n', 'utf8');
+}
+
 async function main() {
   try {
     const result = await verifyRenderDeployment();
-    console.log('\n✅ CẢ HAI DỊCH VỤ RENDER ĐỀU LIVE VÀ ỨNG DỤNG ĐÃ VƯỢT QUA SMOKE TEST\n');
+    await appendGithubSummary(result);
+    console.log('\n✅ RENDER LIVE — CÁC DOMAIN ĐÃ ĐƯỢC TỰ NHẬN DIỆN VÀ KIỂM TRA\n');
     console.log(JSON.stringify(result, null, 2));
   } catch (error) {
-    console.error('\n❌ CHƯA THỂ XÁC NHẬN CẢ HAI DỊCH VỤ ĐỀU LIVE');
+    console.error('\n❌ CHƯA THỂ XÁC NHẬN RENDER DEPLOYMENT');
     console.error(error?.message || 'Lỗi không xác định.');
     process.exitCode = 1;
   }

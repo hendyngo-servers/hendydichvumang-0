@@ -76,6 +76,22 @@ class SettingsTests(unittest.TestCase):
         env["AIOGRAM_WEBHOOK_PATH"] = "/telegram/../webhook"
         with self.assertRaisesRegex(ValueError, "đường dẫn"):
             Settings.from_env(env)
+    def test_service_key_rejects_placeholder_and_weak_values(self) -> None:
+        env = self.valid_env()
+        env["HENDY_BOT_SERVICE_KEY"] = "replace-with-a-random-32-byte-secret"
+        with self.assertRaisesRegex(ValueError, "không dùng placeholder"):
+            Settings.from_env(env)
+
+        env["HENDY_BOT_SERVICE_KEY"] = "too-short"
+        with self.assertRaisesRegex(ValueError, "tối thiểu 32 byte"):
+            Settings.from_env(env)
+
+    def test_blank_mini_app_url_is_derived_from_detected_static_site_domain(self) -> None:
+        env = self.valid_env()
+        env["PUBLIC_MINI_APP_URL"] = ""
+        settings = Settings.from_env(env)
+        self.assertEqual(settings.public_app_url, "https://hendy-site.onrender.com/app")
+
     def test_invalid_fsm_ttl_is_rejected(self) -> None:
         env = self.valid_env()
         env["AIOGRAM_FSM_TTL_HOURS"] = "0"

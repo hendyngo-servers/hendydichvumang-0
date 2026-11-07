@@ -91,8 +91,13 @@ class Settings:
             raise ValueError("DATABASE_URL phải là PostgreSQL connection string.")
 
         service_key = _required(source, "HENDY_BOT_SERVICE_KEY")
-        if len(service_key) < 32:
-            raise ValueError("HENDY_BOT_SERVICE_KEY phải có ít nhất 32 ký tự.")
+        if len(service_key.encode("utf-8")) < 32 or service_key.lower().startswith(
+            ("replace-with", "change-me", "changeme", "placeholder")
+        ):
+            raise ValueError(
+                "HENDY_BOT_SERVICE_KEY phải là khóa ngẫu nhiên tối thiểu 32 byte; "
+                "không dùng placeholder."
+            )
 
         api_url = _https_origin(_required(source, "HENDY_API_BASE_URL"), "HENDY_API_BASE_URL")
         public_origin = _https_origin(_required(source, "PUBLIC_APP_URL"), "PUBLIC_APP_URL")

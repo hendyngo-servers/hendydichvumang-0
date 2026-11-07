@@ -82,7 +82,7 @@ test('production Mini App URL must use HTTPS when Telegram Bot is enabled', () =
   }), /PUBLIC_APP_URL.*HTTPS/);
 });
 
-test('bot service key is optional for grammY-only operation and is read when configured', () => {
+test('BOT_SERVICE_KEY remains optional for grammY-only mode but rejects placeholders and weak values', () => {
   const base = {
     NODE_ENV: 'production',
     DATABASE_URL: 'postgres://db',
@@ -93,6 +93,23 @@ test('bot service key is optional for grammY-only operation and is read when con
   };
   assert.equal(loadConfig(base).botServiceKey, '');
   assert.equal(loadConfig({ ...base, BOT_SERVICE_KEY: 'x'.repeat(48) }).botServiceKey, 'x'.repeat(48));
+  assert.throws(() => loadConfig({ ...base, BOT_SERVICE_KEY: 'replace-with-a-random-32-byte-secret' }), /BOT_SERVICE_KEY.*ngẫu nhiên/);
+  assert.throws(() => loadConfig({ ...base, BOT_SERVICE_KEY: 'too-short' }), /BOT_SERVICE_KEY.*ngẫu nhiên/);
+});
+
+test('blank PUBLIC_MINI_APP_URL is derived from the detected Static Site origin', () => {
+  const config = loadConfig({
+    NODE_ENV: 'production',
+    DATABASE_URL: 'postgres://db',
+    ADMIN_USERNAME: 'owner',
+    ADMIN_PASSWORD: 'long-unique-password-123',
+    RENDER_EXTERNAL_URL: 'https://hendy-api.onrender.com',
+    PUBLIC_APP_URL: 'https://hendy-site.onrender.com',
+    PUBLIC_MINI_APP_URL: ''
+  });
+  assert.equal(config.publicApiUrl, 'https://hendy-api.onrender.com');
+  assert.equal(config.publicAppUrl, 'https://hendy-site.onrender.com');
+  assert.equal(config.publicMiniAppUrl, 'https://hendy-site.onrender.com/app');
 });
 
 test('Mini App URL must remain on the configured Static Site origin', () => {

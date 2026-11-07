@@ -68,10 +68,15 @@ services:
         value: ""
       - key: TELEGRAM_CHANNEL_URL
         value: ""
+      # Render resolves the current Static Site URL during every Blueprint sync.
       - key: PUBLIC_APP_URL
-        sync: false
+        fromService:
+          type: web
+          name: hendydichvumang-site
+          envVarKey: RENDER_EXTERNAL_URL
+      # Node.js app derives PUBLIC_MINI_APP_URL as PUBLIC_APP_URL + /app.
       - key: PUBLIC_MINI_APP_URL
-        value: https://hendydichvumang-site.onrender.com/app
+        value: ""
       - key: RENDER_API_KEY
         sync: false
       - key: RENDER_WORKSPACE_ID
