@@ -162,7 +162,7 @@ test('production rejects an ADMIN_PASSWORD shorter than 13 characters', () => {
     NODE_ENV: 'production',
     DATABASE_URL: 'postgres://db',
     ADMIN_PASSWORD: 'a'.repeat(12)
-  }), /ít nhất 13 ký tự/);
+  }), /tối thiểu 13 ký tự/);
 });
 
 test('BOT1_TOKEN takes precedence and BOT_TOKEN remains a temporary alias', () => {
