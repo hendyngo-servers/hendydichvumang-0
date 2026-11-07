@@ -28,6 +28,7 @@ const bot = createBot({
   groupUrl: config.telegramGroupUrl,
   channelUrl: config.telegramChannelUrl
 });
+let primaryBotIdentity = null;
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -67,7 +68,15 @@ app.get('/healthz', async (_req, res) => {
 });
 
 app.get('/api/config', (_req, res) => {
-  res.json({ brand: 'HENDY DỊCH VỤ MẠNG', appUrl: config.publicAppUrl, miniAppUrl: config.publicMiniAppUrl, apiBaseUrl: config.publicApiUrl, language: 'vi', telegramBotConfigured: Boolean(bot) });
+  res.json({
+    brand: 'HENDY DỊCH VỤ MẠNG',
+    appUrl: config.publicAppUrl,
+    miniAppUrl: config.publicMiniAppUrl,
+    apiBaseUrl: config.publicApiUrl,
+    language: 'vi',
+    telegramBotConfigured: Boolean(bot),
+    botUsername: primaryBotIdentity?.username || null
+  });
 });
 
 app.post('/telegram/webhook', rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: 'draft-8', legacyHeaders: false }), async (req, res) => {
@@ -892,7 +901,9 @@ app.get('/api/admin/operations/config', requireAuth, requireAdmin, (_req, res) =
         ['ADMIN_USERNAME', Boolean(config.adminUsername), false],
         ['ADMIN_PASSWORD', Boolean(config.adminPassword), true],
         ['PUBLIC_APP_URL', Boolean(config.publicAppUrl), false],
-        ['ALLOWED_ORIGINS', Boolean(process.env.ALLOWED_ORIGINS), false]
+        ['PUBLIC_MINI_APP_URL', Boolean(config.publicMiniAppUrl), false],
+        ['ALLOWED_ORIGINS', Boolean(process.env.ALLOWED_ORIGINS), false],
+        ['SESSION_TTL_SECONDS', Boolean(process.env.SESSION_TTL_SECONDS), false]
       ]
     },
     {
@@ -913,11 +924,44 @@ app.get('/api/admin/operations/config', requireAuth, requireAdmin, (_req, res) =
         source: 'Biến môi trường của API service'
       }))
     })),
-    security: {
+    runtime: {
+      platform: config.renderRuntime.detected ? 'Render' : 'Custom',
+      service: config.renderRuntime,
+      urls: {
+        api: config.publicApiUrl,
+        website: config.publicAppUrl,
+        miniApp: config.publicMiniAppUrl
+      },
+      primaryBot: {
+        configured: Boolean(bot),
+        telegramId: primaryBotIdentity?.id || null,
+        username: primaryBotIdentity?.username || null
+      }
+    },
+    automaticSecurity: {
+      renderGeneratedSecrets: [
+        { key: 'TELEGRAM_WEBHOOK_SECRET', configured: Boolean(process.env.TELEGRAM_WEBHOOK_SECRET), bits: 256 },
+        { key: 'BOT_SERVICE_KEY', configured: Boolean(config.botServiceKey), bits: 256 },
+        { key: 'ADMIN_PASSWORD', configured: Boolean(config.adminPassword), bits: 256 }
+      ],
+      perLoginSession: {
+        algorithm: 'crypto.randomBytes(32)',
+        entropyBits: 256,
+        databaseStorage: 'SHA-256 hash only'
+      },
       secret_values_exposed: false,
       secret_values_stored_in_database: false,
-      instruction: 'Giá trị bí mật chỉ được quản lý tại Render Environment; giao diện chỉ nhận trạng thái đã cấu hình.'
-    }
+      instruction: 'Không trả giá trị bí mật cho trình duyệt. Render quản lý secret; session token được sinh riêng cho từng lần đăng nhập và chỉ lưu hash.'
+    },
+    credentialsRequiringOwnerInput: [
+      'DATABASE_URL',
+      'BOT1_TOKEN'
+    ],
+    optionalCredentials: [
+      'BOT2_TOKEN (khi bật Aiogram)',
+      'ADMIN_TELEGRAM_ID (khi bật quyền quản trị Telegram)',
+      'RENDER_API_KEY (khi dùng Render Operations/Live Verification)'
+    ]
   });
 });
 
@@ -1005,6 +1049,7 @@ runDueAutomations(db, automationContext).catch((error) => {
 
 if (bot && config.webhookSecret && config.publicApiUrl.startsWith('https://')) {
   Promise.all([
+    bot.api.getMe(),
     bot.api.setWebhook(`${config.publicApiUrl}/telegram/webhook`, {
       secret_token: config.webhookSecret,
       allowed_updates: ['message', 'callback_query']
@@ -1024,8 +1069,14 @@ if (bot && config.webhookSecret && config.publicApiUrl.startsWith('https://')) {
         web_app: { url: config.publicAppUrl }
       }
     })
-  ]).then(() => console.log('Telegram webhook và menu lệnh đã được đăng ký.'))
-    .catch((error) => console.error('Không thể cấu hình Telegram Bot:', error?.error_code || error?.name || 'UNKNOWN'));
+  ]).then(([identity]) => {
+    primaryBotIdentity = {
+      id: String(identity.id),
+      username: identity.username || null,
+      firstName: identity.first_name || null
+    };
+    console.log('Telegram webhook/menu đã sẵn sàng; bot username:', primaryBotIdentity.username || 'không có username');
+  }).catch((error) => console.error('Không thể cấu hình Telegram Bot:', error?.error_code || error?.name || 'UNKNOWN'));
 }
 
 async function shutdown(signal) {

@@ -116,6 +116,18 @@ export function loadConfig(env = process.env) {
     throw new Error('ADMIN_TELEGRAM_ID không hợp lệ.');
   }
 
+  const renderRuntime = Object.freeze({
+    detected: String(env.RENDER || '').toLowerCase() === 'true' ||
+      Boolean(env.RENDER_SERVICE_ID || env.RENDER_EXTERNAL_URL || env.RENDER_EXTERNAL_HOSTNAME),
+    serviceId: String(env.RENDER_SERVICE_ID || '').trim(),
+    serviceName: String(env.RENDER_SERVICE_NAME || '').trim(),
+    serviceType: String(env.RENDER_SERVICE_TYPE || '').trim(),
+    externalUrl: String(env.RENDER_EXTERNAL_URL || '').trim(),
+    externalHostname: String(env.RENDER_EXTERNAL_HOSTNAME || '').trim(),
+    gitBranch: String(env.RENDER_GIT_BRANCH || '').trim(),
+    gitCommit: String(env.RENDER_GIT_COMMIT || '').trim()
+  });
+
   return {
     nodeEnv: env.NODE_ENV || 'development',
     isProduction,
@@ -132,6 +144,7 @@ export function loadConfig(env = process.env) {
     botServiceKey,
     renderApiKey: String(env.RENDER_API_KEY || '').trim(),
     renderWorkspaceId: String(env.RENDER_WORKSPACE_ID || '').trim(),
+    renderRuntime,
     publicApiUrl,
     publicAppUrl,
     publicMiniAppUrl,

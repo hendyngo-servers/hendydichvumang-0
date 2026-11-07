@@ -82,6 +82,29 @@ test('invalid SSL mode and invalid external database URLs are rejected', () => {
   assert.throws(() => loadConfig({ DATABASE_URL: 'https://example.com/db' }), /PostgreSQL URL/);
 });
 
+test('Render-injected service identity, domain and git metadata are detected without extra env vars', () => {
+  const config = loadConfig({
+    DATABASE_URL: 'postgres://localhost/db',
+    RENDER: 'true',
+    RENDER_SERVICE_ID: 'srv-hendy-api',
+    RENDER_SERVICE_NAME: 'hendydichvumang-api',
+    RENDER_SERVICE_TYPE: 'web',
+    RENDER_EXTERNAL_URL: 'https://hendy-api.onrender.com',
+    RENDER_EXTERNAL_HOSTNAME: 'hendy-api.onrender.com',
+    RENDER_GIT_BRANCH: 'main',
+    RENDER_GIT_COMMIT: 'abc123'
+  });
+  assert.equal(config.renderRuntime.detected, true);
+  assert.equal(config.renderRuntime.serviceId, 'srv-hendy-api');
+  assert.equal(config.renderRuntime.serviceName, 'hendydichvumang-api');
+  assert.equal(config.renderRuntime.serviceType, 'web');
+  assert.equal(config.renderRuntime.externalUrl, 'https://hendy-api.onrender.com');
+  assert.equal(config.renderRuntime.externalHostname, 'hendy-api.onrender.com');
+  assert.equal(config.renderRuntime.gitBranch, 'main');
+  assert.equal(config.renderRuntime.gitCommit, 'abc123');
+  assert.equal(config.publicApiUrl, 'https://hendy-api.onrender.com');
+});
+
 test('development config defaults to local URL and does not require admin secret', () => {
   const config = loadConfig({ DATABASE_URL: 'postgres://localhost/db' });
   assert.equal(config.publicApiUrl, 'http://localhost:10000');
@@ -155,6 +178,14 @@ test('production accepts an ADMIN_PASSWORD of exactly 13 characters', () => {
     ADMIN_PASSWORD: 'a'.repeat(13)
   });
   assert.equal(config.adminPassword.length, 13);
+});
+
+test('production rejects an ADMIN_PASSWORD placeholder even when it is long enough', () => {
+  assert.throws(() => loadConfig({
+    NODE_ENV: 'production',
+    DATABASE_URL: 'postgres://db',
+    ADMIN_PASSWORD: 'replace-with-a-long-generated-password'
+  }), /ADMIN_PASSWORD.*riêng/);
 });
 
 test('production rejects an ADMIN_PASSWORD shorter than 13 characters', () => {

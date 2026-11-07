@@ -125,5 +125,7 @@ services:
           type: web
           name: hendydichvumang-api
           envVarKey: PUBLIC_MINI_APP_URL
+      - key: AIOGRAM_WEBHOOK_PATH
+        value: /telegram/webhook
       - key: AIOGRAM_FSM_TTL_HOURS
         value: "24"

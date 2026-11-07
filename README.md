@@ -101,13 +101,13 @@ Nếu database nằm trên Render cùng khu vực, có thể dùng internal URL 
 
 Mở [Render Blueprint](https://dashboard.render.com/blueprint/new?repo=https://github.com/hendyngo-servers/hendydichvumang-0), chọn repository `hendyngo-servers/hendydichvumang-0`, branch `main`, file `render.yaml`, rồi Apply.
 
-Blueprint khai báo ba dịch vụ, không tạo database:
+Blueprint tạo ba service (không tự tạo database):
 
-- `hendydichvumang-api`: Node.js Web Service, Node 22, health check `/healthz`.
-- `hendydichvumang-site`: Static Site, build ra `dist-site`, CDN; `/` là trang giới thiệu, `/app` là Mini App, `/admin` là trang quản trị.
-- `hendydichvumang-aiogram-bot`: Python Web Service thử nghiệm, chạy bot aiogram độc lập với grammY.
+- `hendydichvumang-api`: Node.js Web Service, Node 22.
+- `hendydichvumang-site`: Static Site, homepage `/`, Mini App `/app`, Admin `/admin`.
+- `hendydichvumang-aiogram-bot`: Python Web Service, bot pilot tách biệt với grammY.
 
-Sau khi tạo:
+### Những giá trị Render tự sinh
 
 1. Trong API Web Service, đặt `DATABASE_URL` là connection string PostgreSQL riêng vừa tạo.
 2. Giữ `PGSSLMODE=require` cho PostgreSQL bên ngoài.
@@ -119,7 +119,10 @@ Sau khi tạo:
 8. Mở `https://<static-site-url>/` để xem trang chủ giới thiệu, `https://<static-site-url>/app` để mở Mini App từ Telegram, và `https://<static-site-url>/admin` để vào trang quản trị. Đặt URL `.../app` làm Mini App URL trong BotFather.
 9. Khi bật Aiogram, triển khai service Python sau khi API và migration PostgreSQL đã Live; Render tự cấp webhook secret, domain, database URL và service key cho Aiogram.
 
-Biến API cần khai báo:
+- `ADMIN_PASSWORD`: mật khẩu Admin lần đầu; username mặc định là `admin`.
+- `BOT_SERVICE_KEY`: khóa API ↔ Aiogram.
+- `TELEGRAM_WEBHOOK_SECRET`: webhook grammY.
+- `AIOGRAM_WEBHOOK_SECRET`: webhook Aiogram.
 
 | Key | Bắt buộc | Ghi chú |
 |---|---|---|
@@ -200,16 +203,14 @@ GitHub Actions kiểm tra cú pháp Node.js, chạy test với PostgreSQL 18, c�
 
 Cập nhật source/Blueprint không đồng nghĩa với việc đã deploy lên Render. Sau khi Apply Blueprint, nhập database URL và secrets, hãy kiểm tra deploy cùng endpoint `/healthz` trước khi đưa hệ thống vào sử dụng. Gói Free có thể ngủ; không dùng database Free hết hạn/lưu trữ hạn chế cho ví hoặc thanh toán production lâu dài.
 
-## Render Live Verification — kiểm tra hai dịch vụ thật
+## Render Live Verification — tự nhận diện sau deploy
 
-Repository có lệnh xác minh Render bằng API key riêng, không đưa Render API key vào frontend hay mã nguồn. Lệnh chỉ xác nhận khi cả hai service có deployment mới nhất trạng thái LIVE, đúng workspace/repository/nhánh/commit, URL công khai truy cập được, và API kết nối PostgreSQL thành công.
+Workflow `.github/workflows/render-live-check.yml` chạy sau CI thành công trên `main`, theo lịch 15 phút và có thể chạy thủ công.
 
-### GitHub Actions định kỳ
+### GitHub Actions cấu hình
 
-Mở Settings → Secrets and variables → Actions và cấu hình:
-
-**Secret (không công khai):**
-- RENDER_API_KEY: Render API key, không phải Bot Token.
+**Secret:**
+- `RENDER_API_KEY`: Render API key do chủ tài khoản tự tạo trong Render Dashboard; chỉ dùng server-side để đọc services/deploy/custom domains.
 
 **Variables:**
 - RENDER_LIVE_CHECK_ENABLED = true
@@ -220,7 +221,7 @@ Mở Settings → Secrets and variables → Actions và cấu hình:
 - RENDER_AIOGRAM_CHECK_ENABLED = `true` để bật xác minh bot pilot (mặc định tắt).
 - RENDER_AIOGRAM_SERVICE_ID = ID dịch vụ Python (tùy chọn, script tự dò theo tên).
 
-Workflow `.github/workflows/render-live-check.yml` chạy ngay sau khi workflow CI thành công trên `main`, kiểm tra định kỳ 15 phút và có thể chạy thủ công. Script tự tìm các service theo tên trong workspace, lấy domain trực tiếp từ metadata Render, chờ deploy đúng commit chuyển sang `LIVE`, rồi kiểm tra website `/`, `/app`, `/admin`, `/config.js`, API `/healthz` và `/api/config`. Domain API, website, Mini App và Aiogram được ghi vào GitHub Actions Summary. Khi bật `RENDER_AIOGRAM_CHECK_ENABLED=true`, script còn xác minh `/healthz` của Aiogram phải trả `database=ready`, `webhook=ready`, `framework=aiogram`.
+Không cần cấu hình `STATIC_SITE_URL`, `API_BASE_URL`, `AIOGRAM_BASE_URL` hoặc service IDs trong trường hợp bình thường. Script tự dò bằng tên service + repository, đọc domain mặc định, custom-domain status, đợi đúng commit `LIVE`, rồi kiểm tra Website, Mini App, Admin, API, PostgreSQL và health webhook Aiogram nếu service tồn tại. Kết quả được ghi vào GitHub Actions Summary.
 
 ### Chạy thủ công
 
@@ -237,12 +238,15 @@ npm run verify:render-live
 
 Trạng thái deployment live chỉ là một điều kiện. Lệnh còn gọi endpoint thật và kiểm tra PostgreSQL, nhưng không thực hiện giao dịch tiền, không gửi OTP và không giả lập thao tác mua hàng. Chỉ kết quả thành công mới xác nhận hai dịch vụ đang Live và endpoint cơ bản hoạt động tại thời điểm kiểm tra.
 
+### Giới hạn
 
+Live smoke test không thực hiện giao dịch tiền, không gửi OTP, không tạo Telegram Bot Token, không chuyển database và không sửa DNS. Custom domain được phát hiện/đọc trạng thái sau khi chủ hệ thống đã thêm domain và cấu hình DNS.
+ 
 ## Aiogram — bot Python thử nghiệm
 
 Bảng phân loại cấu hình tự động, secret được tạo, giá trị cần chủ sở hữu cung cấp và lệnh tạo local secrets nằm tại [docs/ENVIRONMENT-AUTOMATION.md](docs/ENVIRONMENT-AUTOMATION.md). Phân tích source upstream và kiến trúc Aiogram nằm tại [docs/AIOGRAM-INTEGRATION.md](docs/AIOGRAM-INTEGRATION.md). Aiogram chạy thành dịch vụ Python riêng với token khác grammY; Node.js API và PostgreSQL vẫn quản lý dữ liệu nghiệp vụ. Không dùng chung Bot Token giữa hai framework.
 
-Biến cần cấu hình cho dịch vụ Python: `BOT2_TOKEN` (token bot thử nghiệm riêng), `AIOGRAM_WEBHOOK_SECRET` (Render tự sinh), `HENDY_API_BASE_URL`, `HENDY_BOT_SERVICE_KEY`, `DATABASE_URL`, `PGSSLMODE`, `PUBLIC_APP_URL` và `AIOGRAM_FSM_TTL_HOURS`. Blueprint liên kết API key và PostgreSQL từ API Web Service; không đưa secrets vào frontend.
+Khi bật Aiogram, chủ hệ thống cung cấp `BOT2_TOKEN` riêng. Render tự sinh `AIOGRAM_WEBHOOK_SECRET`; Blueprint tự liên kết `HENDY_API_BASE_URL`, `HENDY_BOT_SERVICE_KEY`, `DATABASE_URL`, `PGSSLMODE`, `PUBLIC_APP_URL` và `PUBLIC_MINI_APP_URL` từ API. Không đưa secrets vào frontend.
 
 
 
