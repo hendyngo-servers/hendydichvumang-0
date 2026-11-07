@@ -35,6 +35,30 @@ export function unwrapLatestDeploy(payload) {
   if (!deploy || typeof deploy !== 'object' || !deploy.id) throw new Error('Render API không trả về deployment hợp lệ.');
   return deploy;
 }
+export function selectWorkspaceId(payload, requestedId = '') {
+  const entries = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.owners)
+      ? payload.owners
+      : [];
+  const owners = entries
+    .map((entry) => entry?.owner || entry)
+    .filter((owner) => owner && typeof owner === 'object' && typeof owner.id === 'string');
+
+  if (requestedId) {
+    if (owners.length && !owners.some((owner) => owner.id === requestedId)) {
+      throw new Error('RENDER_WORKSPACE_ID không nằm trong danh sách workspace của Render API key.');
+    }
+    return requestedId;
+  }
+
+  const teams = owners.filter((owner) => owner.type === 'team');
+  if (teams.length === 1) return teams[0].id;
+  if (owners.length === 1) return owners[0].id;
+  if (owners.length === 0) throw new Error('Render API key không trả về workspace nào.');
+  throw new Error('Render API key có quyền vào nhiều workspace. Đặt RENDER_WORKSPACE_ID để chọn workspace HENDY.');
+}
+
 export function findWorkspaceService(payload, expected) {
   const entries = Array.isArray(payload) ? payload : Array.isArray(payload?.services) ? payload.services : [];
   const services = entries.map((entry) => entry?.service || entry).filter((service) => service && typeof service === 'object');
@@ -225,13 +249,15 @@ async function checkAiogramService(apiKey, workspaceId, serviceId, env = process
 }
 export async function verifyRenderDeployment(env = process.env) {
   const apiKey = String(env.RENDER_API_KEY || '').trim();
-  const workspaceId = String(env.RENDER_WORKSPACE_ID || '').trim();
+  const requestedWorkspaceId = String(env.RENDER_WORKSPACE_ID || '').trim();
   const staticServiceId = String(env.RENDER_STATIC_SERVICE_ID || '').trim();
   const apiServiceId = String(env.RENDER_API_SERVICE_ID || '').trim();
   const expectedCommit = String(env.EXPECTED_COMMIT_SHA || EXPECTED_COMMIT || '');
-  if (!apiKey || !workspaceId) {
-    throw new Error('Cần RENDER_API_KEY và RENDER_WORKSPACE_ID. Service ID có thể để trống vì script tự tìm theo tên.');
+  if (!apiKey) {
+    throw new Error('Cần RENDER_API_KEY trong GitHub Actions Secret. RENDER_WORKSPACE_ID có thể tự nhận diện nếu API key chỉ thấy một workspace.');
   }
+  const owners = await renderGet(apiKey, '/owners?limit=100');
+  const workspaceId = selectWorkspaceId(owners, requestedWorkspaceId);
   const [staticService, apiService] = await Promise.all([
     verifyOneService(apiKey, workspaceId, staticServiceId, { type: 'static_site', name: 'hendydichvumang-site' }, env, expectedCommit),
     verifyOneService(apiKey, workspaceId, apiServiceId, { type: 'web_service', name: 'hendydichvumang-api' }, env, expectedCommit)

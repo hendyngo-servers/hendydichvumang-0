@@ -55,15 +55,15 @@ services:
         generateValue: true
       - key: BOT1_TOKEN
         sync: false
-      # Bí danh cũ; chỉ gỡ sau khi BOT1_TOKEN hoạt động ổn định.
-      - key: BOT_TOKEN
-        sync: false
+      # Username is a non-secret default; change it in Render Environment if desired.
       - key: ADMIN_USERNAME
-        sync: false
+        value: admin
+      # Render generates a random 256-bit password if no value exists yet.
       - key: ADMIN_PASSWORD
-        sync: false
+        generateValue: true
+      # Optional notifications/authorization target; configure later when needed.
       - key: ADMIN_TELEGRAM_ID
-        sync: false
+        value: ""
       - key: TELEGRAM_GROUP_URL
         value: ""
       - key: TELEGRAM_CHANNEL_URL
@@ -77,10 +77,6 @@ services:
       # Node.js app derives PUBLIC_MINI_APP_URL as PUBLIC_APP_URL + /app.
       - key: PUBLIC_MINI_APP_URL
         value: ""
-      - key: RENDER_API_KEY
-        sync: false
-      - key: RENDER_WORKSPACE_ID
-        sync: false
 
   # Python aiogram pilot bot. BOT2_TOKEN must differ from grammY's BOT1_TOKEN.
   - type: web
@@ -96,9 +92,6 @@ services:
       - key: PYTHON_VERSION
         value: "3.12.10"
       - key: BOT2_TOKEN
-        sync: false
-      # Bí danh cũ; chỉ gỡ sau khi BOT2_TOKEN hoạt động ổn định.
-      - key: AIOGRAM_BOT_TOKEN
         sync: false
       - key: AIOGRAM_WEBHOOK_SECRET
         generateValue: true

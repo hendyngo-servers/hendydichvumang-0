@@ -29,6 +29,14 @@ function normalizeWebAppUrl(value, fallback, name) {
   return url.origin + (pathname === '/' ? '' : pathname);
 }
 
+function isPlaceholderSecret(value) {
+  return /^(replace-with|change-me|changeme|placeholder)/i.test(String(value || '').trim());
+}
+
+function hasRandomSecretStrength(value, minBytes = 32) {
+  return Buffer.byteLength(String(value || ''), 'utf8') >= minBytes && !isPlaceholderSecret(value);
+}
+
 function normalizeTelegramLink(value, name) {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -60,21 +68,20 @@ export function loadConfig(env = process.env) {
   const botServiceKey = String(env.BOT_SERVICE_KEY || '').trim();
   const sslMode = String(env.PGSSLMODE || (isProduction ? 'require' : 'disable')).trim().toLowerCase();
 
-  if (botServiceKey && (
-    Buffer.byteLength(botServiceKey, 'utf8') < 32 ||
-    /^(replace-with|change-me|changeme|placeholder)/i.test(botServiceKey)
-  )) {
+  if (botServiceKey && !hasRandomSecretStrength(botServiceKey, 32)) {
     throw new Error('BOT_SERVICE_KEY phải là khóa bí mật ngẫu nhiên tối thiểu 32 byte; Render Blueprint có thể tự tạo khóa 256-bit.');
   }
 
   if (!['disable', 'require', 'verify-full'].includes(sslMode)) {
     throw new Error('PGSSLMODE chỉ nhận disable, require hoặc verify-full.');
   }
-  if (isProduction && adminPassword.length < 13) {
-    throw new Error('ADMIN_PASSWORD phải có ít nhất 13 ký tự trong môi trường production.');
+  if (isProduction && (adminPassword.length < 13 || isPlaceholderSecret(adminPassword))) {
+    throw new Error('ADMIN_PASSWORD phải là mật khẩu production hợp lệ, tối thiểu 13 ký tự và không dùng placeholder.');
   }
   if (isProduction && !adminUsername) throw new Error('ADMIN_USERNAME không được để trống.');
-  if (botToken && !rawWebhookSecret) throw new Error('Đã cấu hình BOT1_TOKEN (hoặc BOT_TOKEN cũ) nhưng thiếu TELEGRAM_WEBHOOK_SECRET.');
+  if (botToken && !hasRandomSecretStrength(rawWebhookSecret, 32)) {
+    throw new Error('Khi bật Telegram Bot, TELEGRAM_WEBHOOK_SECRET phải là secret ngẫu nhiên tối thiểu 32 byte; Render Blueprint tự tạo giá trị 256-bit.');
+  }
 
   const publicApiUrl = normalizeBaseUrl(
     env.PUBLIC_API_URL || env.RENDER_EXTERNAL_URL,

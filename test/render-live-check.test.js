@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeRepository, normalizeHttpsOrigin, unwrapService, unwrapLatestDeploy,
-  validateService, validateDeploy, findWorkspaceService, validateAiogramHealth
+  validateService, validateDeploy, findWorkspaceService, selectWorkspaceId, validateAiogramHealth
 } from '../scripts/render-live-check.js';
 
 test('repository URL normalization removes .git and trailing slash', () => {
@@ -66,4 +66,20 @@ test('aiogram health is accepted only after database and webhook are ready', () 
   assert.throws(() => validateAiogramHealth({ status: 'starting', database: 'ready', webhook: 'not_ready', framework: 'aiogram' }), /chưa sẵn sàng/);
   assert.throws(() => validateAiogramHealth({ status: 'ok', database: 'unavailable', webhook: 'ready', framework: 'aiogram' }), /PostgreSQL/);
   assert.throws(() => validateAiogramHealth({ status: 'ok', database: 'ready', webhook: 'not_ready', framework: 'aiogram' }), /webhook/);
+});
+
+
+test('Render workspace ID is auto-detected when exactly one team workspace is accessible', () => {
+  const owners = [
+    { owner: { id: 'own-personal', type: 'user', name: 'Personal' }, cursor: 'next' },
+    { owner: { id: 'tea-hendy', type: 'team', name: 'HENDY Workspace' }, cursor: null }
+  ];
+  assert.equal(selectWorkspaceId(owners), 'tea-hendy');
+  assert.equal(selectWorkspaceId([{ owner: { id: 'own-only', type: 'user' } }]), 'own-only');
+  assert.equal(selectWorkspaceId(owners, 'tea-hendy'), 'tea-hendy');
+  assert.throws(() => selectWorkspaceId([
+    { owner: { id: 'tea-a', type: 'team' } },
+    { owner: { id: 'tea-b', type: 'team' } }
+  ]), /nhiều workspace/);
+  assert.throws(() => selectWorkspaceId(owners, 'tea-other'), /không nằm trong danh sách/);
 });
