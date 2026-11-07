@@ -87,7 +87,7 @@ test('Render workspace ID is auto-detected when exactly one team workspace is ac
 
 test('Render workspace discovery reads all owner pages and stops at the final cursor', async () => {
   const firstPage = Array.from({ length: 100 }, (_, index) => ({
-    owner: { id: 'owner-' + index, type: index === 99 ? 'team' : 'user' },
+    owner: { id: 'owner-' + index, type: 'user' },
     cursor: index === 99 ? 'cursor-page-2' : 'cursor-' + index
   }));
   const secondPage = [

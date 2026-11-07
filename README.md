@@ -117,14 +117,14 @@ Sau khi tạo:
 6. Render tự tạo `TELEGRAM_WEBHOOK_SECRET`, `BOT_SERVICE_KEY`, `AIOGRAM_WEBHOOK_SECRET` và `ADMIN_PASSWORD` dưới dạng secret 256-bit. Khi API có HTTPS và BOT1_TOKEN, webhook tự đăng ký vào API URL; Mini App sử dụng URL Static Site.
 7. Kiểm tra `https://<api-url>/healthz`, cần có `status: ok` và `database: ready`.
 8. Mở `https://<static-site-url>/` để xem trang chủ giới thiệu, `https://<static-site-url>/app` để mở Mini App từ Telegram, và `https://<static-site-url>/admin` để vào trang quản trị. Đặt URL `.../app` làm Mini App URL trong BotFather.
-9. Nếu bật Aiogram, nhập `BOT2_TOKEN` khác grammY; giữ `AIOGRAM_WEBHOOK_SECRET` do Render tự sinh. Aiogram nhận `PUBLIC_APP_URL` và `PUBLIC_MINI_APP_URL` từ API qua Blueprint. Chỉ deploy Python service sau khi API và migration PostgreSQL đã Live.
+9. Khi bật Aiogram, triển khai service Python sau khi API và migration PostgreSQL đã Live; Render tự cấp webhook secret, domain, database URL và service key cho Aiogram.
 
 Biến API cần khai báo:
 
 | Key | Bắt buộc | Ghi chú |
 |---|---|---|
 | `NODE_ENV` | Có | `production` |
-| `DATABASE_URL` | Có | PostgreSQL ở Render hoặc bên ngoài |
+| `DATABASE_URL` | Chủ sở hữu cung cấp | PostgreSQL hiện có/bên ngoài; không tự thay database để tránh tạo DB khác hoặc mất dữ liệu |
 | `PGSSLMODE` | Có | Mặc định `require` |
 | `ADMIN_USERNAME` | Tự động | Mặc định `admin`; có thể đổi trong Render Environment |
 | `ADMIN_PASSWORD` | Tự tạo | Render tạo secret ngẫu nhiên 256-bit nếu chưa có giá trị; lưu vào password manager |
@@ -139,7 +139,6 @@ Biến API cần khai báo:
 | `LEGACY_CUSTOMER_URL` | Tùy chọn | URL HTTPS trang khách hàng PHP cũ, không kèm token/secret |
 | `PGSSL_CA_CERT` | Tùy chọn | CA PEM nếu dùng `verify-full` |
 | `ALLOWED_ORIGINS` | Tự động | API/Website origin được tự thêm; chỉ cấu hình nếu có origin ngoài |
-| `DATABASE_URL` | Chủ sở hữu cung cấp | PostgreSQL hiện có/bên ngoài; không tự thay database để tránh mất dữ liệu |
 | `RENDER_API_KEY` | Chủ sở hữu cung cấp | Chỉ cần cho Operations Center/Render live check; tạo trong Render Account Settings |
 
 ## 6. Chạy local
