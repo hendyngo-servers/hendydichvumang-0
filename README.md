@@ -99,7 +99,7 @@ Nếu database nằm trên Render cùng khu vực, có thể dùng internal URL 
 
 ## 5. Triển khai Render Blueprint
 
-Mở [Render Blueprint](https://dashboard.render.com/blueprint/new?repo=https://github.com/hendyngo-servers/hendydichvumang-0), chọn repository `hendyngo-servers/hendydichvumang`, branch `main`, file `render.yaml`, rồi Apply.
+Mở [Render Blueprint](https://dashboard.render.com/blueprint/new?repo=https://github.com/hendyngo-servers/hendydichvumang-0), chọn repository `hendyngo-servers/hendydichvumang-0`, branch `main`, file `render.yaml`, rồi Apply.
 
 Blueprint khai báo ba dịch vụ, không tạo database:
 
@@ -112,7 +112,7 @@ Sau khi tạo:
 1. Trong API Web Service, đặt `DATABASE_URL` là connection string PostgreSQL riêng vừa tạo.
 2. Giữ `PGSSLMODE=require` cho PostgreSQL bên ngoài.
 3. Đặt `ADMIN_USERNAME` và `ADMIN_PASSWORD` mạnh, tối thiểu 16 ký tự.
-4. Đặt `BOT1_TOKEN` nếu dùng grammY chính và `ADMIN_TELEGRAM_ID` để nhận thông báo ticket. Render Blueprint tự tạo `BOT_SERVICE_KEY` ngẫu nhiên 256-bit (32 byte); không cần tự điền placeholder.
+4. Đặt `BOT1_TOKEN` nếu dùng grammY chính và `ADMIN_TELEGRAM_ID` để nhận thông báo ticket. Render Blueprint tự tạo `BOT_SERVICE_KEY` ngẫu nhiên 256-bit (32 byte); không cần tự điền placeholder. Nếu service đã tồn tại và trước đó đã lưu một giá trị placeholder cho khóa này, xóa giá trị placeholder trong Environment một lần rồi sync Blueprint để Render sinh khóa mới.
 5. Không cần nhập `PUBLIC_APP_URL` hoặc `PUBLIC_MINI_APP_URL`: Blueprint tự lấy domain Static Site, còn API tự tạo đường dẫn Mini App `/app`.
 6. Giữ `TELEGRAM_WEBHOOK_SECRET` do Blueprint tự sinh. Khi API có HTTPS và BOT1_TOKEN, webhook tự đăng ký vào API URL; Mini App sử dụng URL Static Site.
 7. Kiểm tra `https://<api-url>/healthz`, cần có `status: ok` và `database: ready`.
@@ -215,9 +215,8 @@ Mở Settings → Secrets and variables → Actions và cấu hình:
 - Không cần khai báo `STATIC_SITE_URL` hoặc `API_BASE_URL`: script tự lấy domain từ Render API.
 - RENDER_AIOGRAM_CHECK_ENABLED = `true` để bật xác minh bot pilot (mặc định tắt).
 - RENDER_AIOGRAM_SERVICE_ID = ID dịch vụ Python (tùy chọn, script tự dò theo tên).
-- `RENDER_AIOGRAM_CHECK_ENABLED=true` để kiểm tra thêm Aiogram; domain của Aiogram cũng tự nhận diện.
 
-Workflow .github/workflows/render-live-check.yml chạy mỗi 15 phút và có thể chạy thủ công trong tab Actions. Script tự tìm service hendydichvumang-site và hendydichvumang-api trong workspace (có thể cung cấp ID để cố định), sau đó kiểm tra đúng service, deployment live + commit, Static Site / /admin /config.js, API /healthz và /api/config. Khi bật `RENDER_AIOGRAM_CHECK_ENABLED=true`, script xác minh thêm service `hendydichvumang-aiogram-bot`: deployment Live và `/healthz` phải trả `database=ready`, `webhook=ready`, `framework=aiogram`. Nếu API service chưa được tạo, kiểm tra trả về tên service hiện có và chỉ rõ service còn thiếu.
+Workflow `.github/workflows/render-live-check.yml` chạy ngay sau khi workflow CI thành công trên `main`, kiểm tra định kỳ 15 phút và có thể chạy thủ công. Script tự tìm các service theo tên trong workspace, lấy domain trực tiếp từ metadata Render, chờ deploy đúng commit chuyển sang `LIVE`, rồi kiểm tra website `/`, `/app`, `/admin`, `/config.js`, API `/healthz` và `/api/config`. Domain API, website, Mini App và Aiogram được ghi vào GitHub Actions Summary. Khi bật `RENDER_AIOGRAM_CHECK_ENABLED=true`, script còn xác minh `/healthz` của Aiogram phải trả `database=ready`, `webhook=ready`, `framework=aiogram`.
 
 ### Chạy thủ công
 

@@ -92,7 +92,7 @@ class SettingsTests(unittest.TestCase):
         settings = Settings.from_env(env)
         self.assertEqual(settings.public_app_url, "https://hendy-site.onrender.com/app")
 
-    def test_invalid_fsm_ttl_is_rejected(self) -> None
+    def test_invalid_fsm_ttl_is_rejected(self) -> None:
         env = self.valid_env()
         env["AIOGRAM_FSM_TTL_HOURS"] = "0"
         with self.assertRaisesRegex(ValueError, "1–168"):

@@ -178,11 +178,11 @@ async function resolveService(apiKey, workspaceId, serviceId, expected) {
   return findWorkspaceService(page, { ...expected, workspaceId });
 }
 
-async function verifyOneService(apiKey, workspaceId, serviceId, expected) {
+async function verifyOneService(apiKey, workspaceId, serviceId, expected, env = process.env, expectedCommit = EXPECTED_COMMIT) {
   const service = await resolveService(apiKey, workspaceId, serviceId, expected);
   const url = validateService(service, { ...expected, id: service.id, workspaceId, branch: EXPECTED_BRANCH, repository: EXPECTED_REPOSITORY });
-  const deploy = await waitForLiveDeploy(apiKey, service.id, EXPECTED_COMMIT, process.env);
-  validateDeploy(deploy, EXPECTED_COMMIT);
+  const deploy = await waitForLiveDeploy(apiKey, service.id, expectedCommit, env);
+  validateDeploy(deploy, expectedCommit);
   return {
     name: service.name, id: service.id, type: service.type, url,
     deployId: deploy.id, deployStatus: deploy.status,
@@ -197,7 +197,7 @@ export function validateAiogramHealth(payload) {
   return true;
 }
 
-async function checkAiogramService(apiKey, workspaceId, serviceId, env = process.env) {
+async function checkAiogramService(apiKey, workspaceId, serviceId, env = process.env, expectedCommit = EXPECTED_COMMIT) {
   const service = await resolveService(apiKey, workspaceId, serviceId, {
     type: 'web_service', name: 'hendydichvumang-aiogram-bot'
   });
@@ -210,8 +210,8 @@ async function checkAiogramService(apiKey, workspaceId, serviceId, env = process
     ? normalizeHttpsOrigin(env.AIOGRAM_BASE_URL, 'AIOGRAM_BASE_URL')
     : url;
   if (configuredUrl !== url) throw new Error('AIOGRAM_BASE_URL không trùng URL Render cấp cho service.');
-  const deploy = await waitForLiveDeploy(apiKey, service.id, EXPECTED_COMMIT, env);
-  validateDeploy(deploy, EXPECTED_COMMIT);
+  const deploy = await waitForLiveDeploy(apiKey, service.id, expectedCommit, env);
+  validateDeploy(deploy, expectedCommit);
   const health = await fetchPublic(url + '/healthz', 'Aiogram health check');
   let payload;
   try { payload = JSON.parse(health.body); } catch { throw new Error('Aiogram /healthz không trả JSON hợp lệ.'); }
@@ -228,12 +228,13 @@ export async function verifyRenderDeployment(env = process.env) {
   const workspaceId = String(env.RENDER_WORKSPACE_ID || '').trim();
   const staticServiceId = String(env.RENDER_STATIC_SERVICE_ID || '').trim();
   const apiServiceId = String(env.RENDER_API_SERVICE_ID || '').trim();
+  const expectedCommit = String(env.EXPECTED_COMMIT_SHA || EXPECTED_COMMIT || '');
   if (!apiKey || !workspaceId) {
     throw new Error('Cần RENDER_API_KEY và RENDER_WORKSPACE_ID. Service ID có thể để trống vì script tự tìm theo tên.');
   }
   const [staticService, apiService] = await Promise.all([
-    verifyOneService(apiKey, workspaceId, staticServiceId, { type: 'static_site', name: 'hendydichvumang-site' }),
-    verifyOneService(apiKey, workspaceId, apiServiceId, { type: 'web_service', name: 'hendydichvumang-api' })
+    verifyOneService(apiKey, workspaceId, staticServiceId, { type: 'static_site', name: 'hendydichvumang-site' }, env, expectedCommit),
+    verifyOneService(apiKey, workspaceId, apiServiceId, { type: 'web_service', name: 'hendydichvumang-api' }, env, expectedCommit)
   ]);
   const staticUrl = normalizeHttpsOrigin(env.STATIC_SITE_URL || staticService.url, 'STATIC_SITE_URL');
   const apiUrl = normalizeHttpsOrigin(env.API_BASE_URL || apiService.url, 'API_BASE_URL');
@@ -249,11 +250,11 @@ export async function verifyRenderDeployment(env = process.env) {
   };
   if (String(env.RENDER_AIOGRAM_CHECK_ENABLED || '').toLowerCase() === 'true') {
     const aiogramServiceId = String(env.RENDER_AIOGRAM_SERVICE_ID || '').trim();
-    services.aiogramBot = await checkAiogramService(apiKey, workspaceId, aiogramServiceId, env);
+    services.aiogramBot = await checkAiogramService(apiKey, workspaceId, aiogramServiceId, env, expectedCommit);
   }
   return {
     result: 'LIVE', checkedAt: new Date().toISOString(),
-    expectedCommit: EXPECTED_COMMIT || null, services
+    expectedCommit: expectedCommit || null, services
   };
 }
 async function appendGithubSummary(result) {
