@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeRepository, normalizeHttpsOrigin, unwrapService, unwrapLatestDeploy,
-  validateService, validateDeploy, findWorkspaceService, selectWorkspaceId, validateAiogramHealth
+  validateService, validateDeploy, findWorkspaceService, selectWorkspaceId, fetchAllRenderOwners, validateAiogramHealth
 } from '../scripts/render-live-check.js';
 
 test('repository URL normalization removes .git and trailing slash', () => {
@@ -82,4 +82,26 @@ test('Render workspace ID is auto-detected when exactly one team workspace is ac
     { owner: { id: 'tea-b', type: 'team' } }
   ]), /nhiều workspace/);
   assert.throws(() => selectWorkspaceId(owners, 'tea-other'), /không nằm trong danh sách/);
+});
+
+
+test('Render workspace discovery reads all owner pages and stops at the final cursor', async () => {
+  const firstPage = Array.from({ length: 100 }, (_, index) => ({
+    owner: { id: 'owner-' + index, type: index === 99 ? 'team' : 'user' },
+    cursor: index === 99 ? 'cursor-page-2' : 'cursor-' + index
+  }));
+  const secondPage = [
+    { owner: { id: 'tea-hendy', type: 'team' }, cursor: null }
+  ];
+  const calls = [];
+  const owners = await fetchAllRenderOwners('test-api-key', async (_apiKey, path) => {
+    calls.push(path);
+    return path.includes('cursor=') ? secondPage : firstPage;
+  });
+
+  assert.equal(owners.length, 101);
+  assert.equal(selectWorkspaceId(owners), 'tea-hendy');
+  assert.equal(calls.length, 2);
+  assert.match(calls[0], /limit=100/);
+  assert.match(calls[1], /cursor=cursor-page-2/);
 });

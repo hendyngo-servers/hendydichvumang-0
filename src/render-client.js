@@ -13,11 +13,10 @@ const SERVICE_DEFINITIONS = Object.freeze([
     label: 'Node.js API / grammY',
     requiredEnv: [
       'DATABASE_URL',
-      'BOT_TOKEN',
+      'BOT1_TOKEN',
       'TELEGRAM_WEBHOOK_SECRET',
       'BOT_SERVICE_KEY',
       'ADMIN_PASSWORD',
-      'ADMIN_TELEGRAM_ID',
       'PUBLIC_APP_URL'
     ]
   },
@@ -26,7 +25,7 @@ const SERVICE_DEFINITIONS = Object.freeze([
     name: 'hendydichvumang-aiogram-bot',
     label: 'Aiogram Telegram Bot',
     requiredEnv: [
-      'AIOGRAM_BOT_TOKEN',
+      'BOT2_TOKEN',
       'AIOGRAM_WEBHOOK_SECRET',
       'HENDY_API_BASE_URL',
       'HENDY_BOT_SERVICE_KEY',

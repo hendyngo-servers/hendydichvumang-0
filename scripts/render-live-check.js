@@ -118,6 +118,29 @@ async function renderGet(apiKey, path) {
   return fetchJson(RENDER_API_BASE + path, { headers: { Authorization: 'Bearer ' + apiKey } });
 }
 
+export async function fetchAllRenderOwners(apiKey, renderGetImpl = renderGet) {
+  const owners = [];
+  const seenCursors = new Set();
+  let cursor = '';
+
+  for (let page = 0; page < 20; page += 1) {
+    const query = new URLSearchParams({ limit: '100' });
+    if (cursor) query.set('cursor', cursor);
+    const entries = await renderGetImpl(apiKey, '/owners?' + query.toString());
+    if (!Array.isArray(entries)) {
+      throw new Error('Render API không trả về danh sách workspace hợp lệ.');
+    }
+    owners.push(...entries);
+    const nextCursor = String(entries.at(-1)?.cursor || '');
+    if (!nextCursor || entries.length < 100) return owners;
+    if (seenCursors.has(nextCursor)) throw new Error('Render API trả về cursor workspace lặp.');
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
+  }
+
+  throw new Error('Danh sách Render workspace vượt quá giới hạn tự nhận diện 2.000 mục.');
+}
+
 async function waitForLiveDeploy(apiKey, serviceId, expectedCommit = EXPECTED_COMMIT, env = process.env) {
   const attemptsValue = Number(env.RENDER_DEPLOY_WAIT_ATTEMPTS || 1);
   const intervalValue = Number(env.RENDER_DEPLOY_WAIT_INTERVAL_MS || 15000);
@@ -256,7 +279,7 @@ export async function verifyRenderDeployment(env = process.env) {
   if (!apiKey) {
     throw new Error('Cần RENDER_API_KEY trong GitHub Actions Secret. RENDER_WORKSPACE_ID có thể tự nhận diện nếu API key chỉ thấy một workspace.');
   }
-  const owners = await renderGet(apiKey, '/owners?limit=100');
+  const owners = await fetchAllRenderOwners(apiKey);
   const workspaceId = selectWorkspaceId(owners, requestedWorkspaceId);
   const [staticService, apiService] = await Promise.all([
     verifyOneService(apiKey, workspaceId, staticServiceId, { type: 'static_site', name: 'hendydichvumang-site' }, env, expectedCommit),

@@ -34,7 +34,7 @@ test('Render inventory returns service/deploy state and never returns secret val
     if (value.includes('/srv-api/env-vars')) {
       return jsonResponse([
         { envVar: { key: 'DATABASE_URL', value: secret } },
-        { envVar: { key: 'BOT_TOKEN', value: secret } },
+        { envVar: { key: 'BOT1_TOKEN', value: secret } },
         { envVar: { key: 'TELEGRAM_WEBHOOK_SECRET', value: secret } },
         { envVar: { key: 'BOT_SERVICE_KEY', value: secret } },
         { envVar: { key: 'ADMIN_PASSWORD', value: secret } },
@@ -45,7 +45,7 @@ test('Render inventory returns service/deploy state and never returns secret val
     if (value.includes('/srv-aiogram/deploys')) return jsonResponse([{ status: 'build_in_progress' }]);
     if (value.includes('/srv-aiogram/env-vars')) {
       return jsonResponse([
-        { key: 'AIOGRAM_BOT_TOKEN', value: secret },
+        { key: 'BOT2_TOKEN', value: secret },
         { key: 'AIOGRAM_WEBHOOK_SECRET', value: secret },
         { key: 'HENDY_API_BASE_URL', value: 'https://api.example.com' },
         { key: 'HENDY_BOT_SERVICE_KEY', value: secret },

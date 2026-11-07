@@ -21,7 +21,7 @@ test('local secret generator creates 256-bit secrets and links Aiogram to the sa
     'BOT_SERVICE_KEY=replace-with-a-random-32-byte-secret',
     'ADMIN_PASSWORD=',
     'AIOGRAM_WEBHOOK_SECRET=',
-    'HENDY_BOT_SERVICE_KEY=',
+    'HENDY_BOT_SERVICE_KEY=stale-different-service-key',
     'BOT1_TOKEN=',
     'DATABASE_URL=postgresql://placeholder'
   ].join('\n'));
@@ -34,6 +34,7 @@ test('local secret generator creates 256-bit secrets and links Aiogram to the sa
       assert.equal(Buffer.from(values[key], 'base64').length, 32, key + ' must contain 32 random bytes');
     }
     assert.equal(values.HENDY_BOT_SERVICE_KEY, values.BOT_SERVICE_KEY);
+    assert.ok(result.generated.includes('HENDY_BOT_SERVICE_KEY'));
     assert.equal(values.BOT1_TOKEN, '');
     assert.equal(values.DATABASE_URL, 'postgresql://placeholder');
     assert.ok(result.generated.includes('ADMIN_PASSWORD'));

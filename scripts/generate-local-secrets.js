@@ -54,7 +54,7 @@ export async function generateLocalSecrets({
 
   const serviceKey = readEnvValue(lines, 'BOT_SERVICE_KEY');
   const aiogramServiceKey = readEnvValue(lines, 'HENDY_BOT_SERVICE_KEY');
-  if (isBlankOrPlaceholder(aiogramServiceKey) && serviceKey) {
+  if (serviceKey && aiogramServiceKey !== serviceKey) {
     setEnvValue(lines, 'HENDY_BOT_SERVICE_KEY', serviceKey);
     generated.push('HENDY_BOT_SERVICE_KEY');
   }
