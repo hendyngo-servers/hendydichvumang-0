@@ -75,7 +75,9 @@ app.get('/api/config', (_req, res) => {
     apiBaseUrl: config.publicApiUrl,
     language: 'vi',
     telegramBotConfigured: Boolean(bot),
-    botUsername: primaryBotIdentity?.username || null
+    botUsername: primaryBotIdentity?.username || null,
+    telegramGroupUrl: config.telegramGroupUrl || null,
+    telegramChannelUrl: config.telegramChannelUrl || null
   });
 });
 

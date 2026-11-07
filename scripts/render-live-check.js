@@ -17,6 +17,27 @@ export function normalizeRepository(value) {
   }
 }
 
+export function normalizeCustomDomains(payload) {
+  const entries = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.items)
+      ? payload.items
+      : [];
+  return entries
+    .map((entry) => entry?.customDomain || entry)
+    .filter((domain) => typeof domain?.name === 'string' && domain.name.trim())
+    .map((domain) => ({
+      name: domain.name.trim().toLowerCase(),
+      domainType: String(domain.domainType || ''),
+      verificationStatus: String(domain.verificationStatus || 'unknown'),
+      redirectForName: domain.redirectForName || null
+    }))
+    .sort((a, b) => {
+      const verified = Number(b.verificationStatus === 'verified') - Number(a.verificationStatus === 'verified');
+      return verified || a.name.localeCompare(b.name);
+    });
+}
+
 export function normalizeHttpsOrigin(value, name = 'URL') {
   let url;
   try { url = new URL(String(value || '').trim()); } catch { throw new Error(name + ' không phải URL hợp lệ.'); }
