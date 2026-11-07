@@ -357,7 +357,8 @@ async function checkAiogramService(apiKey, workspaceId, serviceId, env, expected
       database: payload.database,
       webhook: payload.webhook,
       framework: payload.framework,
-      botId: payload.bot_id || null
+      botId: payload.bot_id || null,
+      botUsername: payload.bot_username || null
     }
   };
 }

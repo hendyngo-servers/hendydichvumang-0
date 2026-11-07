@@ -957,7 +957,9 @@ app.get('/api/admin/operations/config', requireAuth, requireAdmin, (_req, res) =
       'DATABASE_URL',
       'BOT1_TOKEN',
       'BOT2_TOKEN',
-      'ADMIN_TELEGRAM_ID',
+      'ADMIN_TELEGRAM_ID'
+    ],
+    optionalCredentials: [
       'RENDER_API_KEY'
     ]
   });

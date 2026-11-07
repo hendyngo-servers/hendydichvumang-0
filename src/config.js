@@ -113,7 +113,8 @@ export function loadConfig(env = process.env) {
   }
 
   const renderRuntime = Object.freeze({
-    detected: String(env.RENDER || '').toLowerCase() === 'true',
+    detected: String(env.RENDER || '').toLowerCase() === 'true' ||
+      Boolean(env.RENDER_SERVICE_ID || env.RENDER_EXTERNAL_URL || env.RENDER_EXTERNAL_HOSTNAME),
     serviceId: String(env.RENDER_SERVICE_ID || '').trim(),
     serviceName: String(env.RENDER_SERVICE_NAME || '').trim(),
     serviceType: String(env.RENDER_SERVICE_TYPE || '').trim(),
