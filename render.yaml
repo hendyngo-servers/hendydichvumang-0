@@ -55,15 +55,12 @@ services:
         generateValue: true
       - key: BOT1_TOKEN
         sync: false
-      # Bí danh cũ; chỉ gỡ sau khi BOT1_TOKEN hoạt động ổn định.
-      - key: BOT_TOKEN
-        sync: false
-      - key: ADMIN_USERNAME
-        sync: false
+      # BOT_TOKEN remains a read-only legacy alias; it is not requested for new deployments.
+      # API defaults to username "admin"; a custom value may be set manually later.
       - key: ADMIN_PASSWORD
-        sync: false
+        generateValue: true
       - key: ADMIN_TELEGRAM_ID
-        sync: false
+        value: ""
       - key: TELEGRAM_GROUP_URL
         value: ""
       - key: TELEGRAM_CHANNEL_URL
@@ -77,10 +74,10 @@ services:
       # Node.js app derives PUBLIC_MINI_APP_URL as PUBLIC_APP_URL + /app.
       - key: PUBLIC_MINI_APP_URL
         value: ""
-      - key: RENDER_API_KEY
-        sync: false
-      - key: RENDER_WORKSPACE_ID
-        sync: false
+      - key: SESSION_TTL_SECONDS
+        value: "604800"
+      - key: TELEGRAM_INITDATA_MAX_AGE_SECONDS
+        value: "86400"
 
   # Python aiogram pilot bot. BOT2_TOKEN must differ from grammY's BOT1_TOKEN.
   - type: web
@@ -97,9 +94,7 @@ services:
         value: "3.12.10"
       - key: BOT2_TOKEN
         sync: false
-      # Bí danh cũ; chỉ gỡ sau khi BOT2_TOKEN hoạt động ổn định.
-      - key: AIOGRAM_BOT_TOKEN
-        sync: false
+      # AIOGRAM_BOT_TOKEN remains a read-only legacy alias; new deployments use BOT2_TOKEN.
       - key: AIOGRAM_WEBHOOK_SECRET
         generateValue: true
       - key: HENDY_API_BASE_URL
@@ -132,5 +127,7 @@ services:
           type: web
           name: hendydichvumang-api
           envVarKey: PUBLIC_MINI_APP_URL
+      - key: AIOGRAM_WEBHOOK_PATH
+        value: /telegram/webhook
       - key: AIOGRAM_FSM_TTL_HOURS
         value: "24"

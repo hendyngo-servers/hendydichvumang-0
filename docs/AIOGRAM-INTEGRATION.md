@@ -188,12 +188,13 @@ migrations/004_aiogram_fsm.sql
 
 GitHub Actions dùng Python 3.12, cài aiogram pin 3.31.0, chạy `compileall` và các Python unit tests; cùng workflow chạy `npm run verify` cho Node API/migrations và build Static Site. Test FSM hiện kiểm tra StorageKey/event-isolation contract; cần chạy soak test với PostgreSQL thật sau khi deploy để xác nhận persistence và concurrency ở môi trường Render.
 
-Blueprint khai báo `hendydichvumang-aiogram-bot` (Python 3.12.10). Cần cấu hình:
-- `AIOGRAM_BOT_TOKEN`: token bot pilot khác hoàn toàn grammY.
-- `AIOGRAM_WEBHOOK_SECRET`: Render tự sinh.
-- `HENDY_API_BASE_URL`, `HENDY_BOT_SERVICE_KEY`: liên kết Node API.
-- `DATABASE_URL`, `PGSSLMODE`, `PGSSL_CA_CERT`: liên kết PostgreSQL.
-- `PUBLIC_APP_URL`: origin Render Static Site; `PUBLIC_MINI_APP_URL`: URL Mini App tại `/app`.
+Blueprint khai báo `hendydichvumang-aiogram-bot` (Python 3.12.10). Phân loại cấu hình:
+- `BOT2_TOKEN`: token bot pilot do chủ hệ thống lấy từ BotFather; bắt buộc khác `BOT1_TOKEN`.
+- `AIOGRAM_WEBHOOK_SECRET`: Render tự sinh 256-bit bằng `generateValue: true`.
+- `HENDY_API_BASE_URL`, `HENDY_BOT_SERVICE_KEY`: tự liên kết Node API qua `fromService`; key không chép vào source.
+- `DATABASE_URL`, `PGSSLMODE`: tự liên kết từ service API; API vẫn cần PostgreSQL URL hợp lệ do chủ hệ thống cung cấp.
+- `PUBLIC_APP_URL`, `PUBLIC_MINI_APP_URL`: lấy qua API và domain Static Site; Mini App tự ghép `/app`.
+- Webhook base của Aiogram lấy từ Render `RENDER_EXTERNAL_URL`; không cần nhập host thủ công.
 - `AIOGRAM_FSM_TTL_HOURS`: 1–168 giờ, mặc định 24.
 
 Triển khai Node API/migrations trước, sau đó mới deploy Python service. Free Web Service có thể sleep; cấu hình Free chỉ phù hợp pilot, không phải bot production 24/7.
@@ -202,8 +203,8 @@ Triển khai Node API/migrations trước, sau đó mới deploy Python service.
 
 1. Tạo token bot thử nghiệm riêng qua BotFather; không dùng token chính.
 2. Deploy Node API + PostgreSQL và kiểm tra `/healthz`.
-3. Đặt `BOT_TOKEN` và `BOT_SERVICE_KEY` trong API.
-4. Đặt `AIOGRAM_BOT_TOKEN` riêng rồi deploy Python service.
+3. Cung cấp `BOT1_TOKEN` (và nếu bật pilot thì `BOT2_TOKEN` riêng) qua Render Environment.
+4. Blueprint tự sinh webhook secrets, admin password và service key; Render chuyển service key/API URLs/DB URLs sang Aiogram qua `fromService`.
 5. Kiểm tra Python `/healthz`: `status=ok`, `database=ready`, `webhook=ready`.
 6. Thử `/start`, `/customer`, `/balance`, `/services` và menu Reply Keyboard.
 7. Tạo ticket hai bước, kiểm tra ticket xuất hiện trong cùng Admin Dashboard và audit log.
