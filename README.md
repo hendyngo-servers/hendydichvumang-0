@@ -254,7 +254,7 @@ Live smoke test không thực hiện giao dịch tiền, không gửi OTP, khôn
 
 Phân tích source upstream, quyết định module, kiến trúc tích hợp, bảo mật và hướng dẫn thử nghiệm nằm tại [docs/AIOGRAM-INTEGRATION.md](docs/AIOGRAM-INTEGRATION.md). Aiogram chạy thành dịch vụ Python riêng với token khác grammY; Node.js API và PostgreSQL vẫn quản lý dữ liệu nghiệp vụ. Không dùng chung Bot Token giữa hai framework.
 
-Biến cần cấu hình cho dịch vụ Python: `BOT2_TOKEN` (token bot thử nghiệm riêng), `AIOGRAM_WEBHOOK_SECRET` (Render tự sinh), `HENDY_API_BASE_URL`, `HENDY_BOT_SERVICE_KEY`, `DATABASE_URL`, `PGSSLMODE`, `PUBLIC_APP_URL` và `AIOGRAM_FSM_TTL_HOURS`. Blueprint liên kết API key và PostgreSQL từ API Web Service; không đưa secrets vào frontend.
+Khi bật Aiogram, chủ hệ thống cung cấp `BOT2_TOKEN` riêng. Render tự sinh `AIOGRAM_WEBHOOK_SECRET`; Blueprint tự liên kết `HENDY_API_BASE_URL`, `HENDY_BOT_SERVICE_KEY`, `DATABASE_URL`, `PGSSLMODE`, `PUBLIC_APP_URL` và `PUBLIC_MINI_APP_URL` từ API. Không đưa secrets vào frontend.
 
 
 

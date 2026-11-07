@@ -955,12 +955,12 @@ app.get('/api/admin/operations/config', requireAuth, requireAdmin, (_req, res) =
     },
     credentialsRequiringOwnerInput: [
       'DATABASE_URL',
-      'BOT1_TOKEN',
-      'BOT2_TOKEN',
-      'ADMIN_TELEGRAM_ID'
+      'BOT1_TOKEN'
     ],
     optionalCredentials: [
-      'RENDER_API_KEY'
+      'BOT2_TOKEN (khi bật Aiogram)',
+      'ADMIN_TELEGRAM_ID (khi bật quyền quản trị Telegram)',
+      'RENDER_API_KEY (khi dùng Render Operations/Live Verification)'
     ]
   });
 });
