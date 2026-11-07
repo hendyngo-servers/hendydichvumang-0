@@ -74,7 +74,7 @@ export function loadConfig(env = process.env) {
     adminPassword.length < 13 ||
     /^(replace-with|change-me|changeme|placeholder)/i.test(adminPassword)
   )) {
-    throw new Error('ADMIN_PASSWORD phải là mật khẩu riêng tối thiểu 13 ký tự; Render Blueprint có thể tự sinh 256-bit.');
+    throw new Error('ADMIN_PASSWORD phải là mật khẩu riêng ít nhất 13 ký tự; Render Blueprint có thể tự sinh 256-bit.');
   }
   if (isProduction && !adminUsername) throw new Error('ADMIN_USERNAME không được để trống.');
   if (botToken && !rawWebhookSecret) throw new Error('Đã cấu hình BOT1_TOKEN (hoặc BOT_TOKEN cũ) nhưng thiếu TELEGRAM_WEBHOOK_SECRET.');
