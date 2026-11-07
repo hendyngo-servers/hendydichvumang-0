@@ -10,7 +10,7 @@ class CustomerKeyboardTests(unittest.TestCase):
     def test_mini_app_is_first_and_legacy_site_is_optional(self) -> None:
         settings = Settings.from_env({
             "AIOGRAM_BOT_TOKEN": "123456:test",
-            "AIOGRAM_WEBHOOK_SECRET": "secret",
+            "AIOGRAM_WEBHOOK_SECRET": "test-aiogram-webhook-secret-32bytes-minimum",
             "RENDER_EXTERNAL_URL": "https://bot.example.com",
             "HENDY_API_BASE_URL": "https://api.example.com",
             "HENDY_BOT_SERVICE_KEY": "x" * 40,
@@ -26,7 +26,7 @@ class CustomerKeyboardTests(unittest.TestCase):
     def test_no_secret_is_embedded_in_button_url(self) -> None:
         settings = Settings.from_env({
             "AIOGRAM_BOT_TOKEN": "123456:test",
-            "AIOGRAM_WEBHOOK_SECRET": "secret",
+            "AIOGRAM_WEBHOOK_SECRET": "test-aiogram-webhook-secret-32bytes-minimum",
             "RENDER_EXTERNAL_URL": "https://bot.example.com",
             "HENDY_API_BASE_URL": "https://api.example.com",
             "HENDY_BOT_SERVICE_KEY": "x" * 40,
@@ -42,7 +42,7 @@ class CustomerKeyboardTests(unittest.TestCase):
     def test_return_button_has_callback_data(self) -> None:
         settings = Settings.from_env({
             "AIOGRAM_BOT_TOKEN": "123456:test",
-            "AIOGRAM_WEBHOOK_SECRET": "secret",
+            "AIOGRAM_WEBHOOK_SECRET": "test-aiogram-webhook-secret-32bytes-minimum",
             "RENDER_EXTERNAL_URL": "https://bot.example.com",
             "HENDY_API_BASE_URL": "https://api.example.com",
             "HENDY_BOT_SERVICE_KEY": "x" * 40,

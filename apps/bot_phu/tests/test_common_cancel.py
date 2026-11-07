@@ -14,7 +14,7 @@ class CancelCommandTests(unittest.IsolatedAsyncioTestCase):
     def settings(self) -> Settings:
         return Settings.from_env({
             "BOT2_TOKEN": "123456:aiogram-test-token",
-            "AIOGRAM_WEBHOOK_SECRET": "test-webhook-secret",
+            "AIOGRAM_WEBHOOK_SECRET": "test-aiogram-webhook-secret-32bytes-minimum",
             "RENDER_EXTERNAL_URL": "https://aiogram.example.com",
             "HENDY_API_BASE_URL": "https://api.example.com",
             "HENDY_BOT_SERVICE_KEY": "s" * 48,
