@@ -51,18 +51,27 @@ test('Render inventory auto-detects workspace and custom domains without exposin
       const id = value.includes('/srv-site/') ? 'site' : value.includes('/srv-api/') ? 'api' : 'aiogram';
       return jsonResponse([{ deploy: { status: id === 'aiogram' ? 'build_in_progress' : 'live', createdAt: '2026-11-05T10:00:00Z', commit: { id: 'abc123', message: 'deploy ' + id } } }]);
     }
-    if (value.includes('/env-vars')) {
-      const apiKeys = [
-        'DATABASE_URL', 'BOT1_TOKEN', 'TELEGRAM_WEBHOOK_SECRET', 'BOT_SERVICE_KEY',
-        'ADMIN_PASSWORD', 'ADMIN_TELEGRAM_ID', 'PUBLIC_APP_URL', 'PUBLIC_MINI_APP_URL'
-      ];
-      const aiogramKeys = [
-        'BOT2_TOKEN', 'AIOGRAM_WEBHOOK_SECRET', 'HENDY_API_BASE_URL',
-        'HENDY_BOT_SERVICE_KEY', 'DATABASE_URL', 'PGSSLMODE',
-        'PUBLIC_APP_URL', 'PUBLIC_MINI_APP_URL'
-      ];
-      const keys = value.includes('/srv-api/') ? apiKeys : value.includes('/srv-aiogram/') ? aiogramKeys : ['STATIC_API_BASE_URL'];
-      return jsonResponse(keys.map((key) => ({ envVar: { key, value: secret } })));
+    if (value.includes('/srv-api/env-vars')) {
+      return jsonResponse([
+        { envVar: { key: 'DATABASE_URL', value: secret } },
+        { envVar: { key: 'BOT1_TOKEN', value: secret } },
+        { envVar: { key: 'TELEGRAM_WEBHOOK_SECRET', value: secret } },
+        { envVar: { key: 'BOT_SERVICE_KEY', value: secret } },
+        { envVar: { key: 'ADMIN_PASSWORD', value: secret } },
+        { envVar: { key: 'ADMIN_TELEGRAM_ID', value: '123456789' } },
+        { envVar: { key: 'PUBLIC_APP_URL', value: 'https://example.com' } }
+      ]);
+    }
+    if (value.includes('/srv-aiogram/deploys')) return jsonResponse([{ status: 'build_in_progress' }]);
+    if (value.includes('/srv-aiogram/env-vars')) {
+      return jsonResponse([
+        { key: 'BOT2_TOKEN', value: secret },
+        { key: 'AIOGRAM_WEBHOOK_SECRET', value: secret },
+        { key: 'HENDY_API_BASE_URL', value: 'https://api.example.com' },
+        { key: 'HENDY_BOT_SERVICE_KEY', value: secret },
+        { key: 'DATABASE_URL', value: secret },
+        { key: 'PGSSLMODE', value: 'require' }
+      ]);
     }
     throw new Error('Unexpected Render URL');
   };

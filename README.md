@@ -109,57 +109,40 @@ Blueprint tạo ba service (không tự tạo database):
 
 ### Những giá trị Render tự sinh
 
-Render Blueprint tự tạo secret ngẫu nhiên 256-bit (32 byte) cho:
+1. Trong API Web Service, đặt `DATABASE_URL` là connection string PostgreSQL riêng vừa tạo.
+2. Giữ `PGSSLMODE=require` cho PostgreSQL bên ngoài.
+3. Tài khoản Admin mặc định là `admin`; Render tự tạo `ADMIN_PASSWORD` ngẫu nhiên 256-bit nếu biến chưa tồn tại. Lưu mật khẩu này vào password manager. Nếu service đã có mật khẩu riêng, Render giữ nguyên.
+4. Cung cấp `BOT1_TOKEN` lấy từ BotFather cho grammY. Nếu triển khai Aiogram pilot, cung cấp `BOT2_TOKEN` khác hoàn toàn. Hai token này không thể tự sinh ngoài Telegram.
+5. Không cần nhập domain API/Website/Mini App: Blueprint tự nối Static Site ↔ API ↔ Aiogram. Node.js tự ghép Mini App URL thành `PUBLIC_APP_URL/app`.
+6. Render tự tạo `TELEGRAM_WEBHOOK_SECRET`, `BOT_SERVICE_KEY`, `AIOGRAM_WEBHOOK_SECRET` và `ADMIN_PASSWORD` dưới dạng secret 256-bit. Khi API có HTTPS và BOT1_TOKEN, webhook tự đăng ký vào API URL; Mini App sử dụng URL Static Site.
+7. Kiểm tra `https://<api-url>/healthz`, cần có `status: ok` và `database: ready`.
+8. Mở `https://<static-site-url>/` để xem trang chủ giới thiệu, `https://<static-site-url>/app` để mở Mini App từ Telegram, và `https://<static-site-url>/admin` để vào trang quản trị. Đặt URL `.../app` làm Mini App URL trong BotFather.
+9. Khi bật Aiogram, triển khai service Python sau khi API và migration PostgreSQL đã Live; Render tự cấp webhook secret, domain, database URL và service key cho Aiogram.
 
 - `ADMIN_PASSWORD`: mật khẩu Admin lần đầu; username mặc định là `admin`.
 - `BOT_SERVICE_KEY`: khóa API ↔ Aiogram.
 - `TELEGRAM_WEBHOOK_SECRET`: webhook grammY.
 - `AIOGRAM_WEBHOOK_SECRET`: webhook Aiogram.
 
-Các giá trị `generateValue: true` chỉ được sinh khi biến chưa tồn tại; sync sau giữ nguyên secret đã có. Lưu `ADMIN_PASSWORD` từ Render Environment sau lần tạo đầu tiên. Nếu một service cũ đang chứa placeholder, xóa placeholder một lần rồi sync Blueprint để Render sinh giá trị mới.
-
-Session đăng nhập không dùng một secret tĩnh bổ sung: Node sinh token ngẫu nhiên 32 byte cho mỗi phiên và chỉ lưu SHA-256 hash trong PostgreSQL.
-
-### Những thông tin cần chủ hệ thống cấp
-
-1. `DATABASE_URL`: PostgreSQL thật mà HENDY sẽ sử dụng; không tự đổi sang database rỗng.
-2. `BOT1_TOKEN`: token BotFather của bot grammY chính.
-3. `BOT2_TOKEN`: token BotFather khác biệt nếu bật Aiogram.
-4. `ADMIN_TELEGRAM_ID`: Telegram ID được chủ hệ thống xác nhận để nhận quyền/quản trị bot.
-5. `RENDER_API_KEY`: chỉ cần khi sử dụng Render Operations Inventory / Live Verification; tự tạo tại Render Dashboard, không đưa vào source.
-
-### Các giá trị được tự nhận diện và kết nối
-
-Không nhập domain thủ công:
-
-- API lấy domain website qua `fromService` từ Static Site.
-- Static Site nhận API URL để build `config.js`.
-- Mini App tự tạo URL `PUBLIC_APP_URL + /app`.
-- Aiogram nhận API URL, DB URL, service key và Mini App URL từ API.
-- Webhook mỗi bot sử dụng URL công khai riêng của service tương ứng.
-- Runtime tự đọc Render service ID/name/type, hostname, branch và commit.
-- Telegram bot username/ID được lấy từ Bot API `getMe()`.
-
-### Trình tự triển khai
-
-1. Cung cấp `DATABASE_URL`, `BOT1_TOKEN` và các thông tin bắt buộc của API.
-2. Nếu dùng Aiogram, cung cấp thêm `BOT2_TOKEN` riêng; token này không được trùng bot chính.
-3. Apply Blueprint và đợi API/PostgreSQL migrations sẵn sàng.
-4. Kiểm tra API `/healthz`, Website `/`, `/app`, `/admin`.
-5. Workflow Live Verification tự nhận diện domain/workspace/service, đợi deploy đúng commit LIVE và chạy smoke tests.
-6. Nếu dùng custom domain, thêm domain tại Render và cấu hình DNS ở registrar. HENDY tự đọc trạng thái xác minh nhưng không tự tạo DNS record hoặc đổi canonical host.
-
-Render service Free có thể sleep; đây là cấu hình pilot, không phải cam kết bot production 24/7.
-
-| Biến | Nguồn |
-|---|---|
-| `DATABASE_URL` | Chủ hệ thống / PostgreSQL provider |
-| `BOT1_TOKEN`, `BOT2_TOKEN` | BotFather |
-| `ADMIN_TELEGRAM_ID` | Chủ hệ thống xác nhận |
-| `ADMIN_PASSWORD` | Render sinh tự động |
-| `BOT_SERVICE_KEY`, `TELEGRAM_WEBHOOK_SECRET`, `AIOGRAM_WEBHOOK_SECRET` | Render sinh tự động |
-| `PUBLIC_APP_URL`, `PUBLIC_MINI_APP_URL`, `HENDY_API_BASE_URL` | Blueprint tự nối giữa services |
-| `RENDER_WORKSPACE_ID`, service IDs, public URLs | Tự dò từ Render metadata; có thể override khi bị trùng |
+| Key | Bắt buộc | Ghi chú |
+|---|---|---|
+| `NODE_ENV` | Có | `production` |
+| `DATABASE_URL` | Chủ sở hữu cung cấp | PostgreSQL hiện có/bên ngoài; không tự thay database để tránh tạo DB khác hoặc mất dữ liệu |
+| `PGSSLMODE` | Có | Mặc định `require` |
+| `ADMIN_USERNAME` | Tự động | Mặc định `admin`; có thể đổi trong Render Environment |
+| `ADMIN_PASSWORD` | Tự tạo | Render tạo secret ngẫu nhiên 256-bit nếu chưa có giá trị; lưu vào password manager |
+| `PUBLIC_APP_URL` | Tự động | Lấy domain HTTPS của Static Site qua `fromService`; chỉ override khi dùng custom domain |
+| `PUBLIC_MINI_APP_URL` | Tự động | API tự ghép `PUBLIC_APP_URL + /app`; không nhập tay nếu không cần override |
+| `BOT1_TOKEN` | Chủ sở hữu cung cấp | Token BotFather của grammY chính |
+| `BOT2_TOKEN` | Chủ sở hữu cung cấp | Token BotFather riêng cho Aiogram pilot |
+| `BOT_SERVICE_KEY` | Tự tạo | Render tạo secret ngẫu nhiên 256-bit; Aiogram nhận cùng giá trị qua `fromService` |
+| `TELEGRAM_WEBHOOK_SECRET` | Tự tạo | Render tạo secret ngẫu nhiên 256-bit |
+| `AIOGRAM_WEBHOOK_SECRET` | Tự tạo | Render tạo secret ngẫu nhiên 256-bit |
+| `ADMIN_TELEGRAM_ID` | Chủ sở hữu cung cấp | Telegram ID để phân quyền Admin; để trống nếu chưa bật phân quyền/thông báo Telegram |
+| `LEGACY_CUSTOMER_URL` | Tùy chọn | URL HTTPS trang khách hàng PHP cũ, không kèm token/secret |
+| `PGSSL_CA_CERT` | Tùy chọn | CA PEM nếu dùng `verify-full` |
+| `ALLOWED_ORIGINS` | Tự động | API/Website origin được tự thêm; chỉ cấu hình nếu có origin ngoài |
+| `RENDER_API_KEY` | Chủ sở hữu cung cấp | Chỉ cần cho Operations Center/Render live check; tạo trong Render Account Settings |
 
 ## 6. Chạy local
 
@@ -167,7 +150,8 @@ Yêu cầu Node.js 22+ và PostgreSQL.
 
 ```bash
 cp .env.example .env
-# Sửa DATABASE_URL và các biến trong .env
+npm run secrets:generate
+# Nhập DATABASE_URL, BOT1_TOKEN/BOT2_TOKEN và ADMIN_TELEGRAM_ID nếu dùng
 npm ci
 npm run verify
 npm start
@@ -229,10 +213,13 @@ Workflow `.github/workflows/render-live-check.yml` chạy sau CI thành công tr
 - `RENDER_API_KEY`: Render API key do chủ tài khoản tự tạo trong Render Dashboard; chỉ dùng server-side để đọc services/deploy/custom domains.
 
 **Variables:**
-- `RENDER_LIVE_CHECK_ENABLED=true`
-- `RENDER_WORKSPACE_ID`: tùy chọn override; mặc định tự suy ra từ ownerId của service đúng repository.
-- `RENDER_STATIC_SERVICE_ID`, `RENDER_API_SERVICE_ID`, `RENDER_AIOGRAM_SERVICE_ID`: tùy chọn override.
-- `RENDER_AIOGRAM_CHECK_ENABLED`: mặc định `auto`; đặt `false` để bỏ qua hoặc `true` để yêu cầu Aiogram phải có mặt.
+- RENDER_LIVE_CHECK_ENABLED = true
+- RENDER_WORKSPACE_ID = ID workspace Render (tùy chọn; tự dò và phân trang khi API key chỉ thấy một workspace phù hợp).
+- RENDER_STATIC_SERVICE_ID = ID Static Site (tùy chọn, script tự dò nếu bỏ trống).
+- RENDER_API_SERVICE_ID = ID Web Service (tùy chọn, script tự dò nếu bỏ trống).
+- Không cần khai báo `STATIC_SITE_URL` hoặc `API_BASE_URL`: script tự lấy domain từ Render API.
+- RENDER_AIOGRAM_CHECK_ENABLED = `true` để bật xác minh bot pilot (mặc định tắt).
+- RENDER_AIOGRAM_SERVICE_ID = ID dịch vụ Python (tùy chọn, script tự dò theo tên).
 
 Không cần cấu hình `STATIC_SITE_URL`, `API_BASE_URL`, `AIOGRAM_BASE_URL` hoặc service IDs trong trường hợp bình thường. Script tự dò bằng tên service + repository, đọc domain mặc định, custom-domain status, đợi đúng commit `LIVE`, rồi kiểm tra Website, Mini App, Admin, API, PostgreSQL và health webhook Aiogram nếu service tồn tại. Kết quả được ghi vào GitHub Actions Summary.
 
@@ -241,10 +228,15 @@ Không cần cấu hình `STATIC_SITE_URL`, `API_BASE_URL`, `AIOGRAM_BASE_URL` h
 Yêu cầu Node.js 22+:
 
 ```bash
-RENDER_API_KEY=... npm run verify:render-live
+RENDER_API_KEY=... \
+npm run verify:render-live
 ```
 
-`RENDER_WORKSPACE_ID` có thể để trống nếu workspace được suy ra duy nhất từ metadata Render. Không ghi API key vào terminal history hoặc commit.
+`RENDER_API_KEY` là secret duy nhất bắt buộc cho live-check. Workflow tự tìm workspace nếu API key chỉ thấy một workspace; nếu API key có nhiều team workspace thì đặt `RENDER_WORKSPACE_ID` trong GitHub Actions Variables. Không cần nhập service ID hoặc domain. Không in/commit giá trị Render API key.
+
+### Giới hạn kiểm tra
+
+Trạng thái deployment live chỉ là một điều kiện. Lệnh còn gọi endpoint thật và kiểm tra PostgreSQL, nhưng không thực hiện giao dịch tiền, không gửi OTP và không giả lập thao tác mua hàng. Chỉ kết quả thành công mới xác nhận hai dịch vụ đang Live và endpoint cơ bản hoạt động tại thời điểm kiểm tra.
 
 ### Giới hạn
 
@@ -252,7 +244,7 @@ Live smoke test không thực hiện giao dịch tiền, không gửi OTP, khôn
  
 ## Aiogram — bot Python thử nghiệm
 
-Phân tích source upstream, quyết định module, kiến trúc tích hợp, bảo mật và hướng dẫn thử nghiệm nằm tại [docs/AIOGRAM-INTEGRATION.md](docs/AIOGRAM-INTEGRATION.md). Aiogram chạy thành dịch vụ Python riêng với token khác grammY; Node.js API và PostgreSQL vẫn quản lý dữ liệu nghiệp vụ. Không dùng chung Bot Token giữa hai framework.
+Bảng phân loại cấu hình tự động, secret được tạo, giá trị cần chủ sở hữu cung cấp và lệnh tạo local secrets nằm tại [docs/ENVIRONMENT-AUTOMATION.md](docs/ENVIRONMENT-AUTOMATION.md). Phân tích source upstream và kiến trúc Aiogram nằm tại [docs/AIOGRAM-INTEGRATION.md](docs/AIOGRAM-INTEGRATION.md). Aiogram chạy thành dịch vụ Python riêng với token khác grammY; Node.js API và PostgreSQL vẫn quản lý dữ liệu nghiệp vụ. Không dùng chung Bot Token giữa hai framework.
 
 Khi bật Aiogram, chủ hệ thống cung cấp `BOT2_TOKEN` riêng. Render tự sinh `AIOGRAM_WEBHOOK_SECRET`; Blueprint tự liên kết `HENDY_API_BASE_URL`, `HENDY_BOT_SERVICE_KEY`, `DATABASE_URL`, `PGSSLMODE`, `PUBLIC_APP_URL` và `PUBLIC_MINI_APP_URL` từ API. Không đưa secrets vào frontend.
 

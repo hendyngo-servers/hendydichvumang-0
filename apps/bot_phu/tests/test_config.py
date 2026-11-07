@@ -9,7 +9,7 @@ class SettingsTests(unittest.TestCase):
     def valid_env(self) -> dict[str, str]:
         return {
             "BOT2_TOKEN": "123456:aiogram-test-token",
-            "AIOGRAM_WEBHOOK_SECRET": "render-generated-secret+/",
+            "AIOGRAM_WEBHOOK_SECRET": "render-generated-webhook-secret-32bytes-minimum",
             "RENDER_EXTERNAL_URL": "https://aiogram.onrender.com",
             "HENDY_API_BASE_URL": "https://api-hendy.onrender.com",
             "HENDY_BOT_SERVICE_KEY": "a" * 48,
@@ -76,6 +76,16 @@ class SettingsTests(unittest.TestCase):
         env["AIOGRAM_WEBHOOK_PATH"] = "/telegram/../webhook"
         with self.assertRaisesRegex(ValueError, "đường dẫn"):
             Settings.from_env(env)
+    def test_webhook_secret_rejects_placeholder_and_weak_values(self) -> None:
+        env = self.valid_env()
+        env["AIOGRAM_WEBHOOK_SECRET"] = "short"
+        with self.assertRaisesRegex(ValueError, "AIOGRAM_WEBHOOK_SECRET.*32 byte"):
+            Settings.from_env(env)
+
+        env["AIOGRAM_WEBHOOK_SECRET"] = "replace-with-a-random-secret-value-long-enough-to-look-valid"
+        with self.assertRaisesRegex(ValueError, "AIOGRAM_WEBHOOK_SECRET.*32 byte"):
+            Settings.from_env(env)
+
     def test_service_key_rejects_placeholder_and_weak_values(self) -> None:
         env = self.valid_env()
         env["HENDY_BOT_SERVICE_KEY"] = "replace-with-a-random-32-byte-secret"

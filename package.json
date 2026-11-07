@@ -12,11 +12,12 @@
     "dev": "node --watch src/server.js",
     "build:static": "node scripts/build-static.js",
     "automation:run": "node scripts/run-automations.js",
-    "check": "node --check src/server.js && node --check src/bot.js && node --check apps/bot_chinh/bot.js && node --check src/security.js && node --check src/db.js && node --check src/config.js && node --check src/commerce.js && node --check src/menu-config.js && node --check src/module-registry.js && node --check src/automation.js && node --check src/render-client.js && node --check src/set-webhook.js && node --check scripts/build-static.js && node --check scripts/run-automations.js && node --check public/config.js && node --check public/app.js && node --check public/admin.js && node --check scripts/render-live-check.js",
+    "check": "node --check src/server.js && node --check src/bot.js && node --check apps/bot_chinh/bot.js && node --check src/security.js && node --check src/db.js && node --check src/config.js && node --check src/commerce.js && node --check src/menu-config.js && node --check src/module-registry.js && node --check src/automation.js && node --check src/render-client.js && node --check src/set-webhook.js && node --check scripts/build-static.js && node --check scripts/run-automations.js && node --check public/config.js && node --check public/app.js && node --check public/admin.js && node --check scripts/render-live-check.js && node --check scripts/generate-local-secrets.js",
     "test": "node --test",
     "verify": "npm run check && npm test",
     "set-webhook": "node src/set-webhook.js",
-    "verify:render-live": "node scripts/render-live-check.js"
+    "verify:render-live": "node scripts/render-live-check.js",
+    "secrets:generate": "node scripts/generate-local-secrets.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

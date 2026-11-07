@@ -20,9 +20,7 @@ const SERVICE_DEFINITIONS = Object.freeze([
       'TELEGRAM_WEBHOOK_SECRET',
       'BOT_SERVICE_KEY',
       'ADMIN_PASSWORD',
-      'ADMIN_TELEGRAM_ID',
-      'PUBLIC_APP_URL',
-      'PUBLIC_MINI_APP_URL'
+      'PUBLIC_APP_URL'
     ]
   },
   {

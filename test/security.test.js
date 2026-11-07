@@ -85,7 +85,7 @@ test('production config accepts valid Render settings and normalizes origins', (
     ADMIN_USERNAME: 'owner',
     ADMIN_PASSWORD: 'a'.repeat(20),
     BOT1_TOKEN: '123456:token',
-    TELEGRAM_WEBHOOK_SECRET: 'render-generated-secret',
+    TELEGRAM_WEBHOOK_SECRET: 'render-generated-webhook-secret-32bytes-minimum',
     RENDER_EXTERNAL_URL: 'https://hendy.onrender.com',
     ALLOWED_ORIGINS: 'https://hendy.onrender.com, https://shop.example.com/'
   });

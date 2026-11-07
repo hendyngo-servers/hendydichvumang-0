@@ -40,21 +40,28 @@ export function unwrapLatestDeploy(payload) {
   if (!deploy || typeof deploy !== 'object' || !deploy.id) throw new Error('Render API không trả về deployment hợp lệ.');
   return deploy;
 }
+export function selectWorkspaceId(payload, requestedId = '') {
+  const entries = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.owners)
+      ? payload.owners
+      : [];
+  const owners = entries
+    .map((entry) => entry?.owner || entry)
+    .filter((owner) => owner && typeof owner === 'object' && typeof owner.id === 'string');
 
-export function normalizeCustomDomains(payload) {
-  const entries = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : [];
-  return entries.map((entry) => entry?.customDomain || entry)
-    .filter((domain) => typeof domain?.name === 'string' && domain.name.trim())
-    .map((domain) => ({
-      name: domain.name.trim().toLowerCase(),
-      domainType: String(domain.domainType || ''),
-      verificationStatus: String(domain.verificationStatus || 'unknown'),
-      redirectForName: domain.redirectForName || null
-    }))
-    .sort((a, b) => {
-      const verified = Number(b.verificationStatus === 'verified') - Number(a.verificationStatus === 'verified');
-      return verified || a.name.localeCompare(b.name);
-    });
+  if (requestedId) {
+    if (owners.length && !owners.some((owner) => owner.id === requestedId)) {
+      throw new Error('RENDER_WORKSPACE_ID không nằm trong danh sách workspace của Render API key.');
+    }
+    return requestedId;
+  }
+
+  const teams = owners.filter((owner) => owner.type === 'team');
+  if (teams.length === 1) return teams[0].id;
+  if (owners.length === 1) return owners[0].id;
+  if (owners.length === 0) throw new Error('Render API key không trả về workspace nào.');
+  throw new Error('Render API key có quyền vào nhiều workspace. Đặt RENDER_WORKSPACE_ID để chọn workspace HENDY.');
 }
 
 export function findWorkspaceService(payload, expected) {
@@ -155,7 +162,30 @@ async function renderGet(apiKey, path) {
   });
 }
 
-async function waitForLiveDeploy(apiKey, serviceId, expectedCommit, env) {
+export async function fetchAllRenderOwners(apiKey, renderGetImpl = renderGet) {
+  const owners = [];
+  const seenCursors = new Set();
+  let cursor = '';
+
+  for (let page = 0; page < 20; page += 1) {
+    const query = new URLSearchParams({ limit: '100' });
+    if (cursor) query.set('cursor', cursor);
+    const entries = await renderGetImpl(apiKey, '/owners?' + query.toString());
+    if (!Array.isArray(entries)) {
+      throw new Error('Render API không trả về danh sách workspace hợp lệ.');
+    }
+    owners.push(...entries);
+    const nextCursor = String(entries.at(-1)?.cursor || '');
+    if (!nextCursor || entries.length < 100) return owners;
+    if (seenCursors.has(nextCursor)) throw new Error('Render API trả về cursor workspace lặp.');
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
+  }
+
+  throw new Error('Danh sách Render workspace vượt quá giới hạn tự nhận diện 2.000 mục.');
+}
+
+async function waitForLiveDeploy(apiKey, serviceId, expectedCommit = EXPECTED_COMMIT, env = process.env) {
   const attemptsValue = Number(env.RENDER_DEPLOY_WAIT_ATTEMPTS || 1);
   const intervalValue = Number(env.RENDER_DEPLOY_WAIT_INTERVAL_MS || 15000);
   const attempts = Number.isInteger(attemptsValue) ? Math.min(Math.max(attemptsValue, 1), 40) : 1;
@@ -365,42 +395,23 @@ async function checkAiogramService(apiKey, workspaceId, serviceId, env, expected
 
 export async function verifyRenderDeployment(env = process.env) {
   const apiKey = String(env.RENDER_API_KEY || '').trim();
-  const workspaceOverride = String(env.RENDER_WORKSPACE_ID || '').trim();
+  const requestedWorkspaceId = String(env.RENDER_WORKSPACE_ID || '').trim();
   const staticServiceId = String(env.RENDER_STATIC_SERVICE_ID || '').trim();
   const apiServiceId = String(env.RENDER_API_SERVICE_ID || '').trim();
   const expectedCommit = String(env.EXPECTED_COMMIT_SHA || EXPECTED_COMMIT || '');
   if (!apiKey) {
-    throw new Error('Cần RENDER_API_KEY. Workspace ID và Service ID có thể để trống vì script tự nhận diện từ Render metadata.');
+    throw new Error('Cần RENDER_API_KEY trong GitHub Actions Secret. RENDER_WORKSPACE_ID có thể tự nhận diện nếu API key chỉ thấy một workspace.');
   }
-
-  // Resolve the Static Site first. Its ownerId is used to constrain subsequent discovery
-  // when the workspace override is omitted.
-  const staticService = await verifyOneService(
-    apiKey,
-    workspaceOverride,
-    staticServiceId,
-    { type: 'static_site', name: 'hendydichvumang-site' },
-    env,
-    expectedCommit
-  );
-  const workspaceId = workspaceOverride || staticService.ownerId || '';
-  const apiService = await verifyOneService(
-    apiKey,
-    workspaceId,
-    apiServiceId,
-    { type: 'web_service', name: 'hendydichvumang-api' },
-    env,
-    expectedCommit
-  );
-  if (staticService.ownerId && apiService.ownerId && staticService.ownerId !== apiService.ownerId) {
-    throw new Error('Static Site và API không thuộc cùng Render workspace.');
-  }
-  if (!workspaceId && !staticService.ownerId && !apiService.ownerId) {
-    throw new Error('Không thể tự nhận diện workspace từ service metadata; hãy khai báo RENDER_WORKSPACE_ID.');
-  }
-
-  const staticUrl = normalizeHttpsOrigin(staticService.url, 'URL Static Site');
-  const apiUrl = normalizeHttpsOrigin(apiService.url, 'URL API');
+  const owners = await fetchAllRenderOwners(apiKey);
+  const workspaceId = selectWorkspaceId(owners, requestedWorkspaceId);
+  const [staticService, apiService] = await Promise.all([
+    verifyOneService(apiKey, workspaceId, staticServiceId, { type: 'static_site', name: 'hendydichvumang-site' }, env, expectedCommit),
+    verifyOneService(apiKey, workspaceId, apiServiceId, { type: 'web_service', name: 'hendydichvumang-api' }, env, expectedCommit)
+  ]);
+  const staticUrl = normalizeHttpsOrigin(env.STATIC_SITE_URL || staticService.url, 'STATIC_SITE_URL');
+  const apiUrl = normalizeHttpsOrigin(env.API_BASE_URL || apiService.url, 'API_BASE_URL');
+  if (staticUrl !== staticService.url) throw new Error('STATIC_SITE_URL không trùng URL Render cấp cho Static Site.');
+  if (apiUrl !== apiService.url) throw new Error('API_BASE_URL không trùng URL Render cấp cho Web Service.');
   const [staticSmoke, apiSmoke] = await Promise.all([
     checkStaticSite(staticUrl, apiUrl),
     checkApi(apiUrl, staticUrl)

@@ -16,6 +16,28 @@ test('production config requires webhook secret when a bot token is configured',
   }), /TELEGRAM_WEBHOOK_SECRET/);
 });
 
+test('production rejects weak or placeholder Telegram webhook secrets', () => {
+  const base = {
+    NODE_ENV: 'production',
+    DATABASE_URL: 'postgres://db',
+    ADMIN_USERNAME: 'admin',
+    ADMIN_PASSWORD: 'strong-admin-password-123',
+    BOT1_TOKEN: '123:token',
+    RENDER_EXTERNAL_URL: 'https://api-hendy.onrender.com'
+  };
+  assert.throws(() => loadConfig({ ...base, TELEGRAM_WEBHOOK_SECRET: 'short' }), /TELEGRAM_WEBHOOK_SECRET.*32 byte/);
+  assert.throws(() => loadConfig({ ...base, TELEGRAM_WEBHOOK_SECRET: 'replace-with-a-random-secret-value-which-is-long-enough' }), /TELEGRAM_WEBHOOK_SECRET.*32 byte/);
+});
+
+test('production rejects placeholder Admin passwords', () => {
+  assert.throws(() => loadConfig({
+    NODE_ENV: 'production',
+    DATABASE_URL: 'postgres://db',
+    ADMIN_USERNAME: 'admin',
+    ADMIN_PASSWORD: 'replace-with-a-long-unique-password'
+  }), /ADMIN_PASSWORD.*placeholder/);
+});
+
 test('production config separates API URL and Static Site URL', () => {
   const config = loadConfig({
     NODE_ENV: 'production',
@@ -23,7 +45,7 @@ test('production config separates API URL and Static Site URL', () => {
     ADMIN_USERNAME: 'ops',
     ADMIN_PASSWORD: 'long-strong-password',
     BOT1_TOKEN: '123:token',
-    TELEGRAM_WEBHOOK_SECRET: 'render-generated+/=secret',
+    TELEGRAM_WEBHOOK_SECRET: 'render-generated-webhook-secret-32bytes-minimum',
     RENDER_EXTERNAL_URL: 'https://api-hendy.onrender.com',
     PUBLIC_APP_URL: 'https://hendy-customer.onrender.com'
   });
@@ -99,7 +121,7 @@ test('production Mini App URL must use HTTPS when Telegram Bot is enabled', () =
     ADMIN_USERNAME: 'owner',
     ADMIN_PASSWORD: 'long-unique-password-123',
     BOT1_TOKEN: '123:token',
-    TELEGRAM_WEBHOOK_SECRET: 'render-generated-secret',
+    TELEGRAM_WEBHOOK_SECRET: 'render-generated-webhook-secret-32bytes-minimum',
     PUBLIC_API_URL: 'https://api.example.com',
     PUBLIC_APP_URL: 'http://customer.example.com'
   }), /PUBLIC_APP_URL.*HTTPS/);
@@ -171,7 +193,7 @@ test('production rejects an ADMIN_PASSWORD shorter than 13 characters', () => {
     NODE_ENV: 'production',
     DATABASE_URL: 'postgres://db',
     ADMIN_PASSWORD: 'a'.repeat(12)
-  }), /ít nhất 13 ký tự/);
+  }), /tối thiểu 13 ký tự/);
 });
 
 test('BOT1_TOKEN takes precedence and BOT_TOKEN remains a temporary alias', () => {
@@ -179,13 +201,13 @@ test('BOT1_TOKEN takes precedence and BOT_TOKEN remains a temporary alias', () =
     DATABASE_URL: 'postgres://localhost/db',
     BOT1_TOKEN: '111:primary-new',
     BOT_TOKEN: '222:primary-legacy',
-    TELEGRAM_WEBHOOK_SECRET: 'test-webhook-secret'
+    TELEGRAM_WEBHOOK_SECRET: 'test-webhook-secret-32bytes-minimum'
   });
   assert.equal(preferred.botToken, '111:primary-new');
   const legacy = loadConfig({
     DATABASE_URL: 'postgres://localhost/db',
     BOT_TOKEN: '222:primary-legacy',
-    TELEGRAM_WEBHOOK_SECRET: 'test-webhook-secret'
+    TELEGRAM_WEBHOOK_SECRET: 'test-webhook-secret-32bytes-minimum'
   });
   assert.equal(legacy.botToken, '222:primary-legacy');
 });

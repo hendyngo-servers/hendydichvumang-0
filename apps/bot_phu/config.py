@@ -111,6 +111,13 @@ class Settings:
         )
 
         raw_secret = _required(source, "AIOGRAM_WEBHOOK_SECRET")
+        if len(raw_secret.encode("utf-8")) < 32 or raw_secret.lower().startswith(
+            ("replace-with", "change-me", "changeme", "placeholder")
+        ):
+            raise ValueError(
+                "AIOGRAM_WEBHOOK_SECRET phải là secret ngẫu nhiên tối thiểu 32 byte; "
+                "Render Blueprint tự tạo giá trị 256-bit."
+            )
         ssl_mode = str(source.get("PGSSLMODE", "require")).strip().lower()
         if ssl_mode not in {"disable", "require", "verify-full"}:
             raise ValueError("PGSSLMODE chỉ nhận disable, require hoặc verify-full.")

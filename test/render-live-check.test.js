@@ -1,15 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  normalizeRepository,
-  normalizeHttpsOrigin,
-  unwrapService,
-  unwrapLatestDeploy,
-  normalizeCustomDomains,
-  validateService,
-  validateDeploy,
-  findWorkspaceService,
-  validateAiogramHealth
+  normalizeRepository, normalizeHttpsOrigin, unwrapService, unwrapLatestDeploy,
+  validateService, validateDeploy, findWorkspaceService, selectWorkspaceId, fetchAllRenderOwners, validateAiogramHealth
 } from '../scripts/render-live-check.js';
 
 const repository = 'https://github.com/hendyngo-servers/hendydichvumang-0';
@@ -181,4 +174,42 @@ test('Aiogram health is accepted only after database and webhook are ready', () 
     webhook: 'not_ready',
     framework: 'aiogram'
   }), /webhook/);
+});
+
+
+test('Render workspace ID is auto-detected when exactly one team workspace is accessible', () => {
+  const owners = [
+    { owner: { id: 'own-personal', type: 'user', name: 'Personal' }, cursor: 'next' },
+    { owner: { id: 'tea-hendy', type: 'team', name: 'HENDY Workspace' }, cursor: null }
+  ];
+  assert.equal(selectWorkspaceId(owners), 'tea-hendy');
+  assert.equal(selectWorkspaceId([{ owner: { id: 'own-only', type: 'user' } }]), 'own-only');
+  assert.equal(selectWorkspaceId(owners, 'tea-hendy'), 'tea-hendy');
+  assert.throws(() => selectWorkspaceId([
+    { owner: { id: 'tea-a', type: 'team' } },
+    { owner: { id: 'tea-b', type: 'team' } }
+  ]), /nhiều workspace/);
+  assert.throws(() => selectWorkspaceId(owners, 'tea-other'), /không nằm trong danh sách/);
+});
+
+
+test('Render workspace discovery reads all owner pages and stops at the final cursor', async () => {
+  const firstPage = Array.from({ length: 100 }, (_, index) => ({
+    owner: { id: 'owner-' + index, type: 'user' },
+    cursor: index === 99 ? 'cursor-page-2' : 'cursor-' + index
+  }));
+  const secondPage = [
+    { owner: { id: 'tea-hendy', type: 'team' }, cursor: null }
+  ];
+  const calls = [];
+  const owners = await fetchAllRenderOwners('test-api-key', async (_apiKey, path) => {
+    calls.push(path);
+    return path.includes('cursor=') ? secondPage : firstPage;
+  });
+
+  assert.equal(owners.length, 101);
+  assert.equal(selectWorkspaceId(owners), 'tea-hendy');
+  assert.equal(calls.length, 2);
+  assert.match(calls[0], /limit=100/);
+  assert.match(calls[1], /cursor=cursor-page-2/);
 });

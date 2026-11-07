@@ -2,13 +2,17 @@ import 'dotenv/config';
 import { Bot } from 'grammy';
 import { normalizeWebhookSecret } from './security.js';
 
-const token = String(process.env.BOT_TOKEN || '').trim();
-const secret = normalizeWebhookSecret(process.env.TELEGRAM_WEBHOOK_SECRET || '');
+const token = String(process.env.BOT1_TOKEN || process.env.BOT_TOKEN || '').trim();
+const rawSecret = String(process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+const secret = normalizeWebhookSecret(rawSecret);
 const base = String(process.env.PUBLIC_API_URL || process.env.RENDER_EXTERNAL_URL || '').trim().replace(/\/+$/, '');
-const appUrl = String(process.env.PUBLIC_APP_URL || '').trim().replace(/\/+$/, '');
+const appOrigin = String(process.env.PUBLIC_APP_URL || '').trim().replace(/\/+$/, '');
+const appUrl = String(process.env.PUBLIC_MINI_APP_URL || (appOrigin ? appOrigin + '/app' : '')).trim().replace(/\/+$/, '');
+const weakSecret = Buffer.byteLength(rawSecret, 'utf8') < 32 ||
+  /^(replace-with|change-me|changeme|placeholder)/i.test(rawSecret);
 
-if (!token || !secret || !base.startsWith('https://') || !appUrl.startsWith('https://')) {
-  console.error('Cần BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, PUBLIC_API_URL và PUBLIC_APP_URL HTTPS.');
+if (!token || !secret || weakSecret || !base.startsWith('https://') || !appUrl.startsWith('https://')) {
+  console.error('Cần BOT1_TOKEN, TELEGRAM_WEBHOOK_SECRET ngẫu nhiên tối thiểu 32 byte, PUBLIC_API_URL và Mini App URL HTTPS.');
   process.exit(1);
 }
 
