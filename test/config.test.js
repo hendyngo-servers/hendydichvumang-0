@@ -97,6 +97,21 @@ test('BOT_SERVICE_KEY remains optional for grammY-only mode but rejects placehol
   assert.throws(() => loadConfig({ ...base, BOT_SERVICE_KEY: 'too-short' }), /BOT_SERVICE_KEY.*ngẫu nhiên/);
 });
 
+test('blank PUBLIC_MINI_APP_URL is derived from the detected Static Site origin', () => {
+  const config = loadConfig({
+    NODE_ENV: 'production',
+    DATABASE_URL: 'postgres://db',
+    ADMIN_USERNAME: 'owner',
+    ADMIN_PASSWORD: 'long-unique-password-123',
+    RENDER_EXTERNAL_URL: 'https://hendy-api.onrender.com',
+    PUBLIC_APP_URL: 'https://hendy-site.onrender.com',
+    PUBLIC_MINI_APP_URL: ''
+  });
+  assert.equal(config.publicApiUrl, 'https://hendy-api.onrender.com');
+  assert.equal(config.publicAppUrl, 'https://hendy-site.onrender.com');
+  assert.equal(config.publicMiniAppUrl, 'https://hendy-site.onrender.com/app');
+});
+
 test('Mini App URL must remain on the configured Static Site origin', () => {
   assert.throws(() => loadConfig({
     DATABASE_URL: 'postgres://localhost/db',

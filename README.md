@@ -225,10 +225,6 @@ Yêu cầu Node.js 22+:
 ```bash
 RENDER_API_KEY=... \
 RENDER_WORKSPACE_ID=... \
-RENDER_STATIC_SERVICE_ID=... \
-RENDER_API_SERVICE_ID=... \
-STATIC_SITE_URL=https://<static-site>.onrender.com \
-API_BASE_URL=https://<api-service>.onrender.com \
 npm run verify:render-live
 ```
 
