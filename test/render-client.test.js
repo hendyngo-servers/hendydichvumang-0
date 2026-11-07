@@ -70,7 +70,9 @@ test('Render inventory auto-detects workspace and custom domains without exposin
         { key: 'HENDY_API_BASE_URL', value: 'https://api.example.com' },
         { key: 'HENDY_BOT_SERVICE_KEY', value: secret },
         { key: 'DATABASE_URL', value: secret },
-        { key: 'PGSSLMODE', value: 'require' }
+        { key: 'PGSSLMODE', value: 'require' },
+        { key: 'PUBLIC_APP_URL', value: 'https://example.com' },
+        { key: 'PUBLIC_MINI_APP_URL', value: 'https://example.com/app' }
       ]);
     }
     throw new Error('Unexpected Render URL');
