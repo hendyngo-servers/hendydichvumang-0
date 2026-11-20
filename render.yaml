@@ -1,131 +1,68 @@
-services:
-  # Đổi tên Static Site hiện hữu trong Dashboard trước khi thay name tại Blueprint.
-  # Static UI được phân phối qua CDN; API và webhook chạy ở Web Service bên dưới.
-  - type: web
-    name: hendydichvumang-site
-    runtime: static
-    buildCommand: npm ci --no-audit --no-fund && npm run build:static
-    staticPublishPath: dist-site
-    autoDeployTrigger: commit
-    routes:
-      - type: rewrite
-        source: /admin
-        destination: /admin.html
-      - type: rewrite
-        source: /app
-        destination: /app.html
-    headers:
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
+envVarGroups:
+  - name: hendy-multi-agent-shared
     envVars:
-      - key: STATIC_API_BASE_URL
-        fromService:
-          type: web
-          name: hendydichvumang-api
-          envVarKey: RENDER_EXTERNAL_URL
-
-  # API, PostgreSQL migrations and Telegram webhook.
-  - type: web
-    name: hendydichvumang-api
-    runtime: node
-    plan: free
-    region: singapore
-    buildCommand: npm ci --no-audit --no-fund && npm run verify
-    startCommand: npm start
-    healthCheckPath: /healthz
-    autoDeployTrigger: commit
-    envVars:
-      - key: NODE_VERSION
-        value: "22"
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        sync: false
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD_SALT
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: OPENAI_MODEL
+        value: gpt-6.2-astra
+      - key: OPENAI_BASE_URL
+        value: https://api.openai.com/v1
       - key: PGSSLMODE
         value: require
       - key: PG_POOL_MAX
         value: "5"
-      - key: TELEGRAM_WEBHOOK_SECRET
-        generateValue: true
-      - key: BOT_SERVICE_KEY
-        generateValue: true
-      - key: BOT1_TOKEN
-        sync: false
-      # Username is a non-secret default; change it in Render Environment if desired.
-      - key: ADMIN_USERNAME
-        value: admin
-      # Render generates a random 256-bit password if no value exists yet.
-      - key: ADMIN_PASSWORD
-        generateValue: true
-      # Optional notifications/authorization target; configure later when needed.
-      - key: ADMIN_TELEGRAM_ID
-        value: ""
-      - key: TELEGRAM_GROUP_URL
-        value: ""
-      - key: TELEGRAM_CHANNEL_URL
-        value: ""
-      # Render resolves the current Static Site URL during every Blueprint sync.
-      - key: PUBLIC_APP_URL
-        fromService:
-          type: web
-          name: hendydichvumang-site
-          envVarKey: RENDER_EXTERNAL_URL
-      # Node.js app derives PUBLIC_MINI_APP_URL as PUBLIC_APP_URL + /app.
-      - key: PUBLIC_MINI_APP_URL
-        value: ""
+      - key: SESSION_TTL_HOURS
+        value: "12"
+      - key: MULTI_AGENT_ENABLED
+        value: "false"
+      - key: MULTI_AGENT_WORKER_POLL_SECONDS
+        value: "5"
+      - key: MULTI_AGENT_MAX_ATTEMPTS
+        value: "3"
+      - key: MULTI_AGENT_STALE_MINUTES
+        value: "15"
+      - key: MULTI_AGENT_CONCURRENCY
+        value: "1"
+      - key: NODE_ENV
+        value: production
 
-  # Python aiogram pilot bot. BOT2_TOKEN must differ from grammY's BOT1_TOKEN.
+services:
   - type: web
-    name: hendydichvumang-aiogram-bot
-    runtime: python
-    plan: free
+    name: hendy-multi-agent-api
+    runtime: docker
     region: singapore
-    buildCommand: pip install --no-cache-dir -r apps/bot_phu/requirements.txt
-    startCommand: python -m apps.bot_phu.main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /healthz
-    autoDeployTrigger: commit
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.12.10"
-      - key: BOT2_TOKEN
-        sync: false
-      - key: AIOGRAM_WEBHOOK_SECRET
-        generateValue: true
-      - key: HENDY_API_BASE_URL
-        fromService:
-          type: web
-          name: hendydichvumang-api
-          envVarKey: RENDER_EXTERNAL_URL
-      - key: HENDY_BOT_SERVICE_KEY
-        fromService:
-          type: web
-          name: hendydichvumang-api
-          envVarKey: BOT_SERVICE_KEY
+      - fromGroup: hendy-multi-agent-shared
       - key: DATABASE_URL
-        fromService:
-          type: web
-          name: hendydichvumang-api
-          envVarKey: DATABASE_URL
-      - key: PGSSLMODE
-        fromService:
-          type: web
-          name: hendydichvumang-api
-          envVarKey: PGSSLMODE
-      - key: PUBLIC_APP_URL
-        fromService:
-          type: web
-          name: hendydichvumang-api
-          envVarKey: PUBLIC_APP_URL
-      - key: PUBLIC_MINI_APP_URL
-        fromService:
-          type: web
-          name: hendydichvumang-api
-          envVarKey: PUBLIC_MINI_APP_URL
-      - key: AIOGRAM_WEBHOOK_PATH
-        value: /telegram/webhook
-      - key: AIOGRAM_FSM_TTL_HOURS
-        value: "24"
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PORT
+        value: "10000"
+
+  - type: worker
+    name: hendy-multi-agent-worker
+    runtime: docker
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: npm run worker
+    envVars:
+      - fromGroup: hendy-multi-agent-shared
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PORT
+        value: "10000"
