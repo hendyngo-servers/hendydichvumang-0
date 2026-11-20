@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#101827">
+  <title>HENDY · Multi-Agent Control Center</title>
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main id="login-view" class="login-shell">
+    <section class="login-card">
+      <div class="brand-mark">H</div>
+      <p class="eyebrow">HENDY · AI OPERATIONS</p>
+      <h1>Multi-Agent Control Center</h1>
+      <p class="muted">Đăng nhập quản trị để điều phối Agent, workflow và duyệt kết quả.</p>
+      <form id="login-form" class="stack">
+        <label>Tên đăng nhập<input name="username" autocomplete="username" required maxlength="100" value="admin"></label>
+        <label>Mật khẩu<input name="password" type="password" autocomplete="current-password" required maxlength="512"></label>
+        <button class="primary wide" type="submit">Đăng nhập</button>
+        <p id="login-error" class="form-error" role="alert"></p>
+      </form>
+      <p class="fine-print">Phiên quản trị được bảo vệ bằng cookie HttpOnly và CSRF token.</p>
+    </section>
+  </main>
+
+  <div id="app-view" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="brand-row"><div class="brand-mark small">H</div><div><strong>HENDY</strong><span>Multi-Agent</span></div></div>
+      <nav id="main-nav" aria-label="Điều hướng chính">
+        <button class="nav-item active" data-view="dashboard"><span>▦</span>Tổng quan</button>
+        <button class="nav-item" data-view="tasks"><span>☷</span>Công việc</button>
+        <button class="nav-item" data-view="agents"><span>◈</span>Đội ngũ Agent</button>
+        <button class="nav-item" data-view="workflows"><span>⇢</span>Quy trình</button>
+        <button class="nav-item" data-view="activity"><span>≋</span>Nhật ký hệ thống</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="user-chip"><span class="online-dot"></span><div><strong id="current-user">Admin</strong><small>Quản trị viên</small></div></div>
+        <button id="logout-button" class="quiet wide">Đăng xuất</button>
+      </div>
+    </aside>
+
+    <section class="main-panel">
+      <header class="topbar">
+        <div><p class="eyebrow">HENDY OPERATIONS</p><h1 id="page-title">Tổng quan</h1></div>
+        <div class="top-actions"><span id="worker-status" class="status-pill warn">Worker chưa xác minh</span><button class="primary" id="new-task-top">＋ Tạo công việc</button></div>
+      </header>
+      <div id="notice" class="notice hidden" role="status"></div>
+
+      <section id="view-dashboard" class="view-section">
+        <div class="section-intro"><div><h2>Bảng điều khiển</h2><p class="muted">Theo dõi hàng đợi, Agent và trạng thái xử lý.</p></div><button class="quiet" id="refresh-dashboard">↻ Làm mới</button></div>
+        <div id="stat-grid" class="stat-grid"></div>
+        <div class="two-column">
+          <article class="panel-card"><div class="card-heading"><div><h3>Công việc gần đây</h3><p class="muted">Các yêu cầu mới nhất</p></div><button class="text-button" data-goto="tasks">Xem tất cả →</button></div><div id="recent-tasks" class="table-wrap"></div></article>
+          <article class="panel-card"><div class="card-heading"><div><h3>Worker</h3><p class="muted">Tiến trình xử lý hàng đợi</p></div></div><div id="worker-card"></div></article>
+        </div>
+      </section>
+
+      <section id="view-tasks" class="view-section hidden">
+        <div class="section-intro"><div><h2>Điều phối công việc</h2><p class="muted">Tạo yêu cầu, theo dõi từng bước và phê duyệt đầu ra.</p></div><button class="primary" id="new-task-button">＋ Tạo công việc</button></div>
+        <div class="filter-row"><label class="compact-label">Trạng thái<select id="task-filter"><option value="">Tất cả trạng thái</option><option value="queued">Đang chờ</option><option value="running">Đang chạy</option><option value="awaiting_approval">Chờ duyệt</option><option value="approved">Đã duyệt</option><option value="rejected">Đã từ chối</option><option value="failed">Thất bại</option></select></label><button class="quiet" id="refresh-tasks">↻ Làm mới</button></div>
+        <div id="tasks-list" class="panel-card table-wrap"></div>
+      </section>
+
+      <section id="view-agents" class="view-section hidden">
+        <div class="section-intro"><div><h2>Đội ngũ Agent</h2><p class="muted">Quản lý vai trò, hướng dẫn hệ thống, model và trạng thái từng Agent.</p></div><button class="primary" id="create-agent-button">＋ Thêm Agent</button></div>
+        <div id="agents-grid" class="agents-grid"></div>
+      </section>
+
+      <section id="view-workflows" class="view-section hidden">
+        <div class="section-intro"><div><h2>Quy trình Multi-Agent</h2><p class="muted">Các bước được thực thi tuần tự; đầu ra cuối luôn chờ Admin duyệt.</p></div><button class="primary" id="create-workflow-button">＋ Tạo Workflow</button></div>
+        <div id="workflows-grid" class="workflows-grid"></div>
+      </section>
+
+      <section id="view-activity" class="view-section hidden">
+        <div class="section-intro"><div><h2>Nhật ký kiểm toán</h2><p class="muted">Lưu lại thao tác quản trị và quyết định duyệt.</p></div><button class="quiet" id="refresh-audit">↻ Làm mới</button></div>
+        <div id="audit-list" class="panel-card table-wrap"></div>
+      </section>
+    </section>
+  </div>
+
+  <dialog id="task-dialog" class="modal">
+    <form id="task-form" class="modal-content">
+      <div class="modal-heading"><div><p class="eyebrow">NEW REQUEST</p><h2>Tạo công việc mới</h2></div><button type="button" class="icon-button" data-close="task-dialog" aria-label="Đóng">×</button></div>
+      <label>Tiêu đề<input name="title" required minlength="3" maxlength="160" placeholder="Ví dụ: Xây dựng kế hoạch nội dung tháng 12"></label>
+      <label>Quy trình<select name="workflowKey" id="workflow-select" required></select></label>
+      <label>Yêu cầu<textarea name="prompt" required minlength="5" maxlength="12000" rows="5" placeholder="Mô tả rõ mục tiêu, đầu ra và các giới hạn cần tuân thủ..."></textarea></label>
+      <label>Tài liệu / ngữ cảnh bổ sung<textarea name="contextText" maxlength="30000" rows="4" placeholder="Dán thông tin, dữ liệu và brief được phép sử dụng..."></textarea></label>
+      <label>Độ ưu tiên <span id="priority-value">50</span><input name="priority" id="priority-input" type="range" min="0" max="100" value="50"></label>
+      <p class="muted fine-print">Agent chỉ tạo bản nháp từ dữ liệu cung cấp. Không tự gửi tin, đăng bài, thanh toán hoặc cập nhật tài khoản khách hàng.</p>
+      <div class="modal-actions"><button type="button" class="quiet" data-close="task-dialog">Hủy</button><button class="primary" type="submit">Đưa vào hàng đợi</button></div>
+      <p id="task-form-error" class="form-error"></p>
+    </form>
+  </dialog>
+
+  <dialog id="agent-dialog" class="modal">
+    <form id="agent-form" class="modal-content">
+      <div class="modal-heading"><div><p class="eyebrow">AGENT REGISTRY</p><h2 id="agent-dialog-title">Agent</h2></div><button type="button" class="icon-button" data-close="agent-dialog" aria-label="Đóng">×</button></div>
+      <label>Mã Agent<input name="agentKey" required pattern="[a-z][a-z0-9_]{1,63}" maxlength="64" placeholder="research_writer"></label>
+      <label>Tên hiển thị<input name="name" required minlength="2" maxlength="100"></label>
+      <label>Vai trò<input name="role" required minlength="2" maxlength="100"></label>
+      <label>Mô tả<input name="description" maxlength="500"></label>
+      <label>System prompt<textarea name="systemPrompt" required minlength="20" maxlength="12000" rows="7"></textarea></label>
+      <label>Model override <input name="modelOverride" maxlength="100" placeholder="Để trống dùng model mặc định"></label>
+      <div class="inline-fields"><label>Thứ tự<input name="sortOrder" type="number" min="0" max="10000" value="100"></label><label class="check-label"><input name="enabled" type="checkbox" checked> Kích hoạt Agent</label></div>
+      <div class="modal-actions"><button type="button" class="quiet" data-close="agent-dialog">Hủy</button><button class="primary" type="submit">Lưu Agent</button></div>
+      <p id="agent-form-error" class="form-error"></p>
+    </form>
+  </dialog>
+
+  <dialog id="workflow-dialog" class="modal">
+    <form id="workflow-form" class="modal-content">
+      <div class="modal-heading"><div><p class="eyebrow">WORKFLOW BUILDER</p><h2 id="workflow-dialog-title">Tạo Workflow</h2></div><button type="button" class="icon-button" data-close="workflow-dialog" aria-label="Đóng">×</button></div>
+      <label>Mã Workflow<input name="workflowKey" required pattern="[a-z][a-z0-9_]{1,63}" maxlength="64" placeholder="research_content_video"></label>
+      <label>Tên Workflow<input name="name" required minlength="2" maxlength="120"></label>
+      <label>Mô tả<input name="description" maxlength="500"></label>
+      <fieldset class="step-picker"><legend>Chọn Agent và thứ tự thực thi (tối đa 5)</legend><div id="workflow-agent-options" class="workflow-agent-options"></div></fieldset>
+      <label class="check-label"><input name="enabled" type="checkbox" checked> Kích hoạt Workflow</label>
+      <div class="modal-actions"><button type="button" class="quiet" data-close="workflow-dialog">Hủy</button><button class="primary" type="submit">Lưu Workflow</button></div>
+      <p id="workflow-form-error" class="form-error"></p>
+    </form>
+  </dialog>
+
+  <dialog id="detail-dialog" class="modal modal-wide">
+    <div class="modal-content">
+      <div class="modal-heading"><div><p class="eyebrow">TASK DETAIL</p><h2 id="detail-title">Chi tiết công việc</h2></div><button type="button" class="icon-button" data-close="detail-dialog" aria-label="Đóng">×</button></div>
+      <div id="task-detail-content"></div>
+      <div id="task-detail-actions" class="modal-actions"></div>
+    </div>
+  </dialog>
+</body>
+</html>

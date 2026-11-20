@@ -1,82 +1,56 @@
 import pg from 'pg';
-import fs from 'node:fs/promises';
-import path from 'node:path';
+import { loadConfig } from './config.js';
 
 const { Pool } = pg;
 let pool;
 
-export function createPool(databaseUrl, options = {}) {
+export function getPool() {
   if (pool) return pool;
-  // Keep TLS policy in PGSSLMODE/PGSSL_CA_CERT. node-postgres otherwise lets
-  // sslmode/sslrootcert URL parameters replace the explicit ssl config object.
-  const parsedUrl = new URL(databaseUrl);
-  for (const key of [...parsedUrl.searchParams.keys()]) {
-    if (['sslmode', 'sslrootcert', 'sslcert', 'sslkey'].includes(key.toLowerCase())) {
-      parsedUrl.searchParams.delete(key);
-    }
-  }
-  const connectionString = parsedUrl.toString();
-  const sslMode = options.sslMode || 'disable';
-  const ssl = sslMode === 'disable'
+  const config = loadConfig();
+  const ssl = config.PGSSLMODE === 'disable'
     ? false
-    : {
-        rejectUnauthorized: sslMode === 'verify-full',
-        ...(options.sslCa ? { ca: options.sslCa } : {})
-      };
-
+    : { rejectUnauthorized: config.PGSSLMODE === 'verify-full' };
   pool = new Pool({
-    connectionString,
-    ssl,
-    max: options.max || 5,
+    connectionString: config.DATABASE_URL,
+    max: config.PG_POOL_MAX,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
-    keepAlive: true,
-    application_name: 'hendydichvumang-api'
+    statement_timeout: 30000,
+    application_name: 'hendy-multi-agent',
+    ssl,
   });
-  pool.on('error', (error) => {
-    console.error('PostgreSQL pool error:', error.code || error.name || 'UNKNOWN');
-  });
+  pool.on('error', (error) => console.error('[db] idle client error:', error.message));
   return pool;
 }
 
-export async function migrate(database) {
-  const directory = path.resolve('migrations');
-  const files = (await fs.readdir(directory))
-    .filter((name) => /^\d+_[a-z0-9_-]+\.sql$/i.test(name))
-    .sort();
+export async function query(text, params = []) {
+  return getPool().query(text, params);
+}
 
-  const client = await database.connect();
+export async function transaction(callback) {
+  const client = await getPool().connect();
   try {
-    await client.query('SELECT pg_advisory_lock($1)', [7120261105]);
-    await client.query('CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(160) PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
-
-    for (const file of files) {
-      const exists = await client.query('SELECT 1 FROM schema_migrations WHERE version = $1', [file]);
-      if (exists.rowCount) continue;
-
-      const sql = await fs.readFile(path.join(directory, file), 'utf8');
-      await client.query('BEGIN');
-      try {
-        await client.query(sql);
-        await client.query('INSERT INTO schema_migrations (version) VALUES ($1)', [file]);
-        await client.query('COMMIT');
-        console.log('Đã áp dụng migration:', file);
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      }
-    }
-
-    await client.query('DELETE FROM auth_sessions WHERE expires_at <= NOW()');
+    await client.query('BEGIN');
+    const result = await callback(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
   } finally {
-    await client.query('SELECT pg_advisory_unlock($1)', [7120261105]).catch(() => {});
     client.release();
   }
 }
 
 export async function closePool() {
-  if (!pool) return;
-  const current = pool;
-  pool = undefined;
-  await current.end();
+  if (pool) {
+    const current = pool;
+    pool = undefined;
+    await current.end();
+  }
+}
+
+export async function checkDatabase() {
+  const result = await query('SELECT current_database() AS database, NOW() AS checked_at');
+  return result.rows[0];
 }

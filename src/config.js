@@ -1,157 +1,44 @@
-import { normalizeWebhookSecret } from './security.js';
+import 'dotenv/config';
+import { z } from 'zod';
 
-function readPositiveInteger(value, fallback, name, max = 2_147_483_647) {
-  if (value === undefined || value === '') return fallback;
-  const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > max) {
-    throw new Error(name + ' không hợp lệ.');
-  }
-  return parsed;
-}
+const bool = z.string().optional().transform((v) => v === 'true');
+const positiveInt = (fallback, max) => z.coerce.number().int().min(1).max(max).default(fallback);
 
-function normalizeBaseUrl(value, fallback, name) {
-  const raw = String(value || fallback).trim().replace(/\/+$/, '');
-  let url;
-  try { url = new URL(raw); } catch { throw new Error(name + ' không phải URL hợp lệ.'); }
-  if (!['http:', 'https:'].includes(url.protocol)) throw new Error(name + ' phải dùng HTTP hoặc HTTPS.');
-  return url.origin;
-}
-
-function normalizeWebAppUrl(value, fallback, name) {
-  const raw = String(value || fallback).trim();
-  let url;
-  try { url = new URL(raw); } catch { throw new Error(name + ' không phải URL hợp lệ.'); }
-  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
-    throw new Error(name + ' phải là URL HTTP(S), không chứa thông tin đăng nhập, query hoặc fragment.');
-  }
-  let pathname = url.pathname;
-  while (pathname.length > 1 && pathname.endsWith('/')) pathname = pathname.slice(0, -1);
-  return url.origin + (pathname === '/' ? '' : pathname);
-}
-
-function isPlaceholderSecret(value) {
-  return /^(replace-with|change-me|changeme|placeholder)/i.test(String(value || '').trim());
-}
-
-function hasRandomSecretStrength(value, minBytes = 32) {
-  return Buffer.byteLength(String(value || ''), 'utf8') >= minBytes && !isPlaceholderSecret(value);
-}
-
-function normalizeTelegramLink(value, name) {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  let url;
-  try { url = new URL(raw); } catch { throw new Error(name + ' không phải URL hợp lệ.'); }
-  const allowedHosts = new Set(['t.me', 'www.t.me', 'telegram.me', 'www.telegram.me']);
-  if (url.protocol !== 'https:' || !allowedHosts.has(url.hostname.toLowerCase()) ||
-      url.username || url.password || url.hash) {
-    throw new Error(name + ' phải là liên kết HTTPS công khai từ t.me hoặc telegram.me.');
-  }
-  return url.toString();
-}
+const schema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: positiveInt(10000, 65535),
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  DATABASE_URL: z.string().min(1),
+  PGSSLMODE: z.enum(['disable', 'require', 'verify-full']).default('require'),
+  PG_POOL_MAX: positiveInt(5, 20),
+  ADMIN_USERNAME: z.string().min(3).max(100).default('admin'),
+  ADMIN_PASSWORD: z.string().min(16),
+  ADMIN_PASSWORD_SALT: z.string().min(16),
+  SESSION_SECRET: z.string().min(32),
+  SESSION_TTL_HOURS: positiveInt(12, 168),
+  OPENAI_API_KEY: z.string().optional().default(''),
+  OPENAI_MODEL: z.string().min(1).max(100).default('gpt-6.2-astra'),
+  OPENAI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
+  OPENAI_TIMEOUT_MS: positiveInt(90000, 300000),
+  MULTI_AGENT_ENABLED: bool,
+  MULTI_AGENT_WORKER_POLL_SECONDS: positiveInt(5, 60),
+  MULTI_AGENT_MAX_ATTEMPTS: positiveInt(3, 5),
+  MULTI_AGENT_STALE_MINUTES: positiveInt(15, 120),
+  MULTI_AGENT_CONCURRENCY: positiveInt(1, 5),
+  CORS_ORIGINS: z.string().optional().default(''),
+});
 
 export function loadConfig(env = process.env) {
-  const isProduction = env.NODE_ENV === 'production';
-  const databaseUrl = String(env.DATABASE_URL || env.EXTERNAL_DATABASE_URL || '').trim();
-  if (!databaseUrl) throw new Error('Thiếu DATABASE_URL (có thể dùng PostgreSQL bên ngoài).');
-  let dbUrl;
-  try { dbUrl = new URL(databaseUrl); } catch { throw new Error('DATABASE_URL không hợp lệ.'); }
-  if (!['postgres:', 'postgresql:'].includes(dbUrl.protocol) || !dbUrl.hostname) {
-    throw new Error('DATABASE_URL phải là PostgreSQL URL hợp lệ.');
+  const parsed = schema.safeParse(env);
+  if (!parsed.success) {
+    const issues = parsed.error.issues.map((item) => `${item.path.join('.')}: ${item.message}`);
+    throw new Error(`Invalid environment configuration:\n- ${issues.join('\n- ')}`);
   }
-
-  const port = readPositiveInteger(env.PORT, 10000, 'PORT', 65535);
-  const botToken = String(env.BOT1_TOKEN || env.BOT_TOKEN || '').trim();
-  const rawWebhookSecret = String(env.TELEGRAM_WEBHOOK_SECRET || '').trim();
-  const adminUsername = String(env.ADMIN_USERNAME || 'admin').trim();
-  const adminPassword = String(env.ADMIN_PASSWORD || '');
-  const botServiceKey = String(env.BOT_SERVICE_KEY || '').trim();
-  const sslMode = String(env.PGSSLMODE || (isProduction ? 'require' : 'disable')).trim().toLowerCase();
-
-  if (botServiceKey && !hasRandomSecretStrength(botServiceKey, 32)) {
-    throw new Error('BOT_SERVICE_KEY phải là khóa bí mật ngẫu nhiên tối thiểu 32 byte; Render Blueprint có thể tự tạo khóa 256-bit.');
-  }
-
-  if (!['disable', 'require', 'verify-full'].includes(sslMode)) {
-    throw new Error('PGSSLMODE chỉ nhận disable, require hoặc verify-full.');
-  }
-  if (isProduction && (adminPassword.length < 13 || isPlaceholderSecret(adminPassword))) {
-    throw new Error('ADMIN_PASSWORD phải là mật khẩu riêng hợp lệ, tối thiểu 13 ký tự và không dùng placeholder.');
-  }
-  if (isProduction && !adminUsername) throw new Error('ADMIN_USERNAME không được để trống.');
-  if (botToken && !hasRandomSecretStrength(rawWebhookSecret, 32)) {
-    throw new Error('Khi bật Telegram Bot, TELEGRAM_WEBHOOK_SECRET phải là secret ngẫu nhiên tối thiểu 32 byte; Render Blueprint tự tạo giá trị 256-bit.');
-  }
-
-  const publicApiUrl = normalizeBaseUrl(
-    env.PUBLIC_API_URL || env.RENDER_EXTERNAL_URL,
-    'http://localhost:' + port,
-    'PUBLIC_API_URL'
-  );
-  const publicAppUrl = normalizeBaseUrl(env.PUBLIC_APP_URL, publicApiUrl, 'PUBLIC_APP_URL');
-  const publicMiniAppUrl = normalizeWebAppUrl(
-    env.PUBLIC_MINI_APP_URL,
-    publicAppUrl + '/app',
-    'PUBLIC_MINI_APP_URL'
-  );
-  if (new URL(publicMiniAppUrl).origin !== publicAppUrl) {
-    throw new Error('PUBLIC_MINI_APP_URL phải cùng origin với PUBLIC_APP_URL.');
-  }
-  if (isProduction && botToken && !publicApiUrl.startsWith('https://')) {
-    throw new Error('PUBLIC_API_URL phải là HTTPS khi bật Telegram Bot.');
-  }
-  if (isProduction && botToken && !publicAppUrl.startsWith('https://')) {
-    throw new Error('PUBLIC_APP_URL phải là HTTPS khi bật Telegram Mini App.');
-  }
-  if (isProduction && botToken && !publicMiniAppUrl.startsWith('https://')) {
-    throw new Error('PUBLIC_MINI_APP_URL phải là HTTPS khi bật Telegram Mini App.');
-  }
-
-  const origins = String(env.ALLOWED_ORIGINS || '')
-    .split(',').map((item) => item.trim().replace(/\/+$/, '')).filter(Boolean);
-  const telegramGroupUrl = normalizeTelegramLink(env.TELEGRAM_GROUP_URL, 'TELEGRAM_GROUP_URL');
-  const telegramChannelUrl = normalizeTelegramLink(env.TELEGRAM_CHANNEL_URL, 'TELEGRAM_CHANNEL_URL');
-  const adminTelegramId = String(env.ADMIN_TELEGRAM_ID || '').trim();
-  if (adminTelegramId && !/^-?\d{5,20}$/.test(adminTelegramId)) {
-    throw new Error('ADMIN_TELEGRAM_ID không hợp lệ.');
-  }
-
-  const renderRuntime = Object.freeze({
-    detected: String(env.RENDER || '').toLowerCase() === 'true' ||
-      Boolean(env.RENDER_SERVICE_ID || env.RENDER_EXTERNAL_URL || env.RENDER_EXTERNAL_HOSTNAME),
-    serviceId: String(env.RENDER_SERVICE_ID || '').trim(),
-    serviceName: String(env.RENDER_SERVICE_NAME || '').trim(),
-    serviceType: String(env.RENDER_SERVICE_TYPE || '').trim(),
-    externalUrl: String(env.RENDER_EXTERNAL_URL || '').trim(),
-    externalHostname: String(env.RENDER_EXTERNAL_HOSTNAME || '').trim(),
-    gitBranch: String(env.RENDER_GIT_BRANCH || '').trim(),
-    gitCommit: String(env.RENDER_GIT_COMMIT || '').trim()
+  const value = parsed.data;
+  return Object.freeze({
+    ...value,
+    corsOrigins: value.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
+    cookieSecure: value.NODE_ENV === 'production',
+    workerEnabled: value.MULTI_AGENT_ENABLED && Boolean(value.OPENAI_API_KEY),
   });
-
-  return {
-    nodeEnv: env.NODE_ENV || 'development',
-    isProduction,
-    port,
-    databaseUrl,
-    databaseSslMode: sslMode,
-    databaseSslCa: String(env.PGSSL_CA_CERT || ''),
-    databasePoolMax: readPositiveInteger(env.PG_POOL_MAX, 5, 'PG_POOL_MAX', 20),
-    botToken,
-    webhookSecret: normalizeWebhookSecret(rawWebhookSecret),
-    adminUsername,
-    adminPassword,
-    adminTelegramId,
-    botServiceKey,
-    renderApiKey: String(env.RENDER_API_KEY || '').trim(),
-    renderWorkspaceId: String(env.RENDER_WORKSPACE_ID || '').trim(),
-    renderRuntime,
-    publicApiUrl,
-    publicAppUrl,
-    publicMiniAppUrl,
-    telegramGroupUrl,
-    telegramChannelUrl,
-    allowedOrigins: [...new Set([publicApiUrl, publicAppUrl, ...origins])],
-    initDataMaxAgeSeconds: readPositiveInteger(env.TELEGRAM_INITDATA_MAX_AGE_SECONDS, 86400, 'TELEGRAM_INITDATA_MAX_AGE_SECONDS', 604800),
-    sessionTtlSeconds: readPositiveInteger(env.SESSION_TTL_SECONDS, 604800, 'SESSION_TTL_SECONDS', 2_592_000)
-  };
 }
