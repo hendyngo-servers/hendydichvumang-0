@@ -1,0 +1,65 @@
+name: Bootstrap Multi-Agent replacement
+
+on:
+  push:
+    branches:
+      - rebuild/multi-agent-platform
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hendy-multi-agent-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  replace-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hendy_test
+          POSTGRES_PASSWORD: hendy_test_password
+          POSTGRES_DB: hendy_multi_agent_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hendy_test -d hendy_multi_agent_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://hendy_test:hendy_test_password@localhost:5432/hendy_multi_agent_test
+      TEST_DATABASE_URL: postgresql://hendy_test:hendy_test_password@localhost:5432/hendy_multi_agent_test
+      PGSSLMODE: disable
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: test-only-password-not-for-production
+      ADMIN_PASSWORD_SALT: test-only-random-salt-long-enough
+      SESSION_SECRET: test-only-session-secret-with-more-than-32-chars
+      MULTI_AGENT_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Replace repository source on this branch and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/hendy-multi-agent-bootstrap
+          cp bootstrap/hendy-multi-agent.tar.gz /tmp/hendy-multi-agent-bootstrap/source.tar.gz
+          git ls-files -z | xargs -0 -r git rm -f --
+          tar -xzf /tmp/hendy-multi-agent-bootstrap/source.tar.gz -C .
+          rm -rf bootstrap
+          npm install --no-audit --no-fund
+          npm run migrate
+          npm test
+          find src public test -name '*.js' -print0 | xargs -0 -n1 node --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all
+          git commit -m "Replace source tree with standalone HENDY Multi-Agent platform"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
