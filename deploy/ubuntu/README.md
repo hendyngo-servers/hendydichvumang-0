@@ -69,7 +69,7 @@ Bắt buộc cập nhật các giá trị sau:
 - ALLOWED_ORIGINS: origin được phép gọi API; một-domain có thể đặt https://bot.example.com.
 - BOT1_TOKEN: token production lấy từ BotFather.
 - ADMIN_ID hoặc ADMIN_IDS: Telegram numeric ID của quản trị viên.
-- DATABASE_URL: URI của đúng PostgreSQL database HENDY đang giữ users, wallet, ledger, deposits và orders.
+- DATABASE_URL: URI của đúng PostgreSQL database HENDY đang sử dụng (đang giữ users, wallet, ledger, deposits và orders).
 - DATABASE_SSL=true khi sử dụng Neon hoặc PostgreSQL bên ngoài có TLS.
 
 Không thay DATABASE_URL bằng database trống hoặc database của dự án khác nếu mục tiêu là giữ số dư và đơn hàng hiện tại. VPS app dùng lại database hiện tại; không tạo bản sao ví riêng.
