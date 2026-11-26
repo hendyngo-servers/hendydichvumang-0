@@ -57,7 +57,7 @@ Kiểm tra:
 Tạo file cấu hình riêng:
 
     cd /opt/hendydichvumang-0
-    cp deploy/ubuntu/hendy.env.example deploy/ubuntu/hendy.env
+    sudo cp deploy/ubuntu/hendy.env.example deploy/ubuntu/hendy.env
     sudo chown root:root deploy/ubuntu/hendy.env
     sudo chmod 600 deploy/ubuntu/hendy.env
     sudo nano deploy/ubuntu/hendy.env
