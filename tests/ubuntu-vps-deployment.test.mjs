@@ -24,7 +24,6 @@ test('Ubuntu Compose serves a single-origin application and does not publish Apa
   assert.doesNotMatch(compose, /ports:[\s\S]*?10000:/);
   assert.match(compose, /WEBSITE_PUBLIC_URL:/);
   assert.match(compose, /HENDY_INLINE_WORKERS: "false"/);
-  assert.match(compose, /header_up Host \{http.request.host\}/) === false; // Caddy config is validated in its dedicated assertion below.
 });
 
 test('Caddy preserves the public Website hostname and configures HTTPS hardening', () => {
@@ -92,3 +91,4 @@ test('VPS guide explicitly protects the existing PostgreSQL data and webhook own
   assert.match(guide, /WEBHOOK_AUTO_REGISTER=false/);
   assert.match(guide, /không tạo database ví\/đơn hàng thứ hai/i);
 });
+
