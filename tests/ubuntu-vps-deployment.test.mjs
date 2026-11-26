@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const compose = readFileSync('deploy/ubuntu/compose.yaml', 'utf8');
+const dockerignore = readFileSync('.dockerignore', 'utf8');
 const envExample = readFileSync('deploy/ubuntu/hendy.env.example', 'utf8');
 const appEntry = readFileSync('telegram-bot/public/index.php', 'utf8');
 const webStart = readFileSync('telegram-bot/docker/start.sh', 'utf8');
@@ -58,6 +59,9 @@ test('production VPS env is safe by default and shares one HTTPS origin', () => 
   assert.match(envExample, /^BANK_WEBHOOK_ENABLED=false$/m);
   assert.match(envExample, /^MULTI_AGENT_ENABLED=false$/m);
   assert.match(envExample, /^DATABASE_URL=$/m);
+  assert.match(dockerignore, /^deploy\/ubuntu\/hendy\.env$/m);
+  assert.match(dockerignore, /^deploy\/ubuntu\/hendy\.env\.\*$/m);
+  assert.match(dockerignore, /^!deploy\/ubuntu\/hendy\.env\.example$/m);
   assert.ok(envSchema.variables.APP_URL);
   assert.ok(envSchema.variables.WEBSITE_PUBLIC_URL);
   assert.ok(envSchema.variables.MULTI_AGENT_ENABLED);
