@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Đăng nhập Website · HENDY</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#080d1b;color:#f5f7ff}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at top,#1b2850 0,#080d1b 58%)}
+    main{width:min(100%,480px);padding:30px;border:1px solid #34436a;border-radius:24px;background:linear-gradient(145deg,#151d35,#0d1325);box-shadow:0 24px 80px #0008}
+    .brand{color:#f6d77a;font-weight:900;letter-spacing:.08em;font-size:20px}h1{font-size:24px;margin:18px 0 8px}p{color:#b8c3dc;line-height:1.65}.state{margin:22px 0;padding:16px;border-radius:14px;background:#0a1122;border:1px solid #2d3b5d}.muted{font-size:13px;color:#8f9bb7}a{color:#f6d77a}.spinner{width:22px;height:22px;border:3px solid #465477;border-top-color:#f6d77a;border-radius:50%;display:inline-block;animation:spin .8s linear infinite;vertical-align:middle;margin-right:10px}@keyframes spin{to{transform:rotate(360deg)}}button{border:0;border-radius:12px;padding:12px 18px;background:linear-gradient(90deg,#d7a83e,#ffe8a0);font-weight:800;color:#211807;cursor:pointer}
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand">💠 ⩤ BOT HENDY ⩥</div>
+  <h1>Đăng nhập Website HENDY</h1>
+  <p>Trang xác thực an toàn cho phiên đăng nhập được tạo từ Telegram. Mỗi liên kết chỉ sử dụng một lần và có hiệu lực tối đa 5 phút.</p>
+  <div class="state" id="state"><span class="spinner"></span>Đang xác minh liên kết đăng nhập…</div>
+  <p class="muted">Không chia sẻ liên kết đăng nhập. HENDY không yêu cầu mật khẩu Telegram, mã OTP hoặc PIN của tài khoản bên thứ ba tại trang này.</p>
+  <p><a href="/">Quay lại HENDY BOT</a></p>
+</main>
+<script>
+(async()=>{
+  const state=document.getElementById('state');
+  const params=new URLSearchParams(location.search);
+  const ticket=params.get('ticket')||'';
+  const scope=params.get('scope')==='admin'?'admin':'customer';
+  history.replaceState(null,'',location.pathname);
+  if(!/^[a-f0-9]{64}$/i.test(ticket)){
+    state.textContent='Liên kết không hợp lệ. Hãy quay lại bot Telegram và tạo link mới.';
+    return;
+  }
+  try{
+    const response=await fetch('/api/legacy/session/exchange',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ticket,scope}),cache:'no-store',credentials:'same-origin'
+    });
+    const responseText=await response.text();
+    let result={};
+    try{result=responseText?JSON.parse(responseText):{};}catch(_){throw new Error('Máy chủ xác thực trả về dữ liệu không hợp lệ. Hãy thử lại hoặc tạo link mới từ HENDY BOT.');}
+    if(!response.ok){
+      if(response.status===401) throw new Error(result.error||'Link đăng nhập đã hết hạn hoặc đã được sử dụng. Hãy quay lại HENDY BOT và tạo link mới.');
+      if(response.status===503) throw new Error(result.error||'Dịch vụ dữ liệu đang tạm thời không khả dụng. Vui lòng thử lại sau.');
+      throw new Error(result.error||'Không thể xác minh link đăng nhập.');
+    }
+    state.innerHTML='<strong>✓ Đăng nhập thành công</strong><br><span class="muted">Phiên Website bảo mật đã được cấp. Đang mở HENDY…</span>';
+    const profile=document.createElement('p');
+    profile.textContent='Xin chào '+(result.user?.name||result.user?.username||'thành viên')+' · Telegram ID: '+(result.user?.id||'');
+    state.appendChild(profile);
+    const bot = result.botKey === 'secondary' ? 'secondary' : 'primary';
+    const destination = result.scope === 'admin' ? '/admin?bot='+bot : '/KHACH-HANG/TRUNG-TAM-KHACH-HANG/index.php?bot='+bot+'&view=customer';
+    window.setTimeout(()=>{ window.location.replace(destination); },700);
+  }catch(error){
+    state.textContent=error.message||'Không thể xác minh phiên đăng nhập. Hãy tạo link mới từ bot.';
+  }
+})();
+</script>
+</body>
+</html>

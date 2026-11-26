@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0a1423">
+  <meta name="description" content="HENDY App Store — kho ứng dụng và dịch vụ số đa nền tảng, có quản lý phiên bản, kiểm tra checksum và cập nhật.">
+  <link rel="canonical" href="https://hendydichvumang-szad.onrender.com/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/site.css">
+  <title>HENDY DIGITAL · App Store & Dịch vụ số</title>
+</head>
+<body>
+  <div class="site-noise" aria-hidden="true"></div>
+  <header class="site-header">
+    <a class="site-brand" href="/" aria-label="HENDY Digital"><span class="site-logo">H</span><span><strong>HENDY</strong><small>DIGITAL ECOSYSTEM</small></span></a>
+    <button class="nav-toggle" type="button" aria-label="Mở điều hướng" aria-expanded="false" aria-controls="site-nav"><span></span><span></span></button>
+    <nav id="site-nav" class="site-nav" aria-label="Điều hướng chính">
+      <a class="active" href="/">Trang chủ</a><a href="/app-store/">App Store</a><a href="/miniapp/">Mini App</a>
+      <a href="https://t.me/hendy_dichvu_BOT" target="_blank" rel="noopener noreferrer">Telegram Bot ↗</a>
+    </nav>
+  </header>
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow"><i></i> HỆ SINH THÁI SỐ · APP STORE</span>
+        <h1>Một nền tảng.<br><em>Nhiều trải nghiệm.</em></h1>
+        <p class="hero-lead">Ứng dụng, tiện ích và dịch vụ HENDY — được quản lý tập trung, phát hành có kiểm soát.</p>
+        <p class="hero-description">Khám phá các bản phát hành được công khai, xem thông tin phiên bản, nền tảng hỗ trợ và mã SHA-256 trước khi tải. Thành viên sử dụng Mini App để xem ví, đơn hàng và gửi yêu cầu hỗ trợ.</p>
+        <div class="hero-actions"><a class="button button-primary" href="/app-store/">Khám phá App Store <span>↗</span></a><a class="button button-ghost" href="/miniapp/">Mở Mini App <span>→</span></a></div>
+        <div class="service-state" id="server-status" role="status" aria-live="polite"><span class="status-dot"></span> Đang kiểm tra kết nối máy chủ</div>
+      </div>
+      <div class="hero-side" aria-label="Tổng quan HENDY App Store">
+        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+        <div class="app-window">
+          <div class="window-top"><span></span><span></span><span></span><small>HENDY / RELEASE CENTER</small></div>
+          <div class="window-app"><span class="app-glyph">H</span><span><b>HENDY APP STORE</b><small>ỨNG DỤNG & PHẦN MỀM</small></span></div>
+          <div class="platform-row"><span class="platform-icon">◉</span><span><b>Android</b><small>APK · Kiểm tra checksum</small></span><i>01</i></div>
+          <div class="platform-row"><span class="platform-icon">▣</span><span><b>Windows</b><small>EXE · MSI · ZIP</small></span><i>02</i></div>
+          <div class="platform-row"><span class="platform-icon">⌘</span><span><b>Apple & Linux</b><small>iOS · macOS · Linux</small></span><i>03</i></div>
+          <div class="window-safe"><span>✓</span> PRIVATE RELEASE STORAGE · SHA-256</div>
+        </div>
+        <span class="float-tag tag-top">CONTROLLED RELEASE</span><span class="float-tag tag-bottom">MEMBER MINI APP</span>
+      </div>
+    </section>
+    <section class="section intro-section" id="platforms">
+      <div class="section-heading"><div><span class="eyebrow">01 / NỀN TẢNG</span><h2>Hai không gian.<br><em>Một hệ thống dữ liệu.</em></h2></div><p>Website và Mini App được tối ưu cho trình duyệt, điện thoại và Telegram; dữ liệu dịch vụ được đồng bộ tập trung và bảo vệ theo quyền truy cập.</p></div>
+      <div class="feature-grid">
+        <article class="feature-card feature-store"><div class="feature-icon">▦</div><span class="feature-kicker">PUBLIC CATALOG</span><h3>HENDY App Store</h3><p>Danh mục ứng dụng thật, tìm kiếm, lọc theo hệ điều hành, thông tin bản phát hành, ảnh chụp, release notes và tải xuống có checksum.</p><a href="/app-store/">Mở kho ứng dụng <b>↗</b></a></article>
+        <article class="feature-card feature-member"><div class="feature-icon">◈</div><span class="feature-kicker">TELEGRAM MINI APP</span><h3>Khu vực thành viên</h3><p>Hồ sơ, ví, yêu cầu nạp tiền, đơn hàng, voucher, VIP, Code Telegram và ticket CSKH từ dữ liệu tài khoản đã xác thực.</p><a href="/miniapp/">Mở Mini App <b>↗</b></a></article>
+      </div>
+    </section>
+    <section class="release-flow">
+      <div class="flow-copy"><span class="eyebrow">02 / RELEASE WORKFLOW</span><h2>Phát hành có<br><em>kiểm soát.</em></h2><p>Không tự động biến bản upload thành bản công khai. Mỗi binary được lưu riêng tư, kiểm tra định dạng, tạo SHA-256 và chỉ xuất hiện trong danh mục sau khi hoàn tất kiểm duyệt.</p></div>
+      <ol class="flow-list"><li><span>01</span><div><b>Chuẩn bị sản phẩm</b><small>Hoàn tất quyền nguồn, nhà cung cấp và trạng thái dịch vụ.</small></div></li><li><span>02</span><div><b>Tải binary riêng tư</b><small>Kiểm tra định dạng, kích thước, nền tảng và checksum.</small></div></li><li><span>03</span><div><b>Kiểm duyệt bản phát hành</b><small>Chỉ bản đủ điều kiện mới được công khai cho người dùng.</small></div></li></ol>
+    </section>
+    <section class="section trust-section">
+      <div class="section-heading"><div><span class="eyebrow">03 / AN TOÀN & MINH BẠCH</span><h2>Đúng dữ liệu.<br><em>Đúng trạng thái.</em></h2></div><p>Website không hiển thị dữ liệu mẫu thay cho dữ liệu thật. Các trạng thái kết nối, phát hành và triển khai phải được phân biệt rõ ràng.</p></div>
+      <div class="trust-grid"><div><b>01</b><h3>Private Storage</h3><p>Binary lưu trong Neon Object Storage riêng tư; frontend chỉ nhận URL tải có thời hạn.</p></div><div><b>02</b><h3>SHA-256</h3><p>Hiển thị mã kiểm tra toàn vẹn tệp. Checksum không thay thế chữ ký nhà phát hành hoặc quét mã độc.</p></div><div><b>03</b><h3>Readiness Gate</h3><p>Chỉ sản phẩm đủ điều kiện cung cấp và quyền phân phối mới được xuất hiện công khai.</p></div></div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <a class="site-brand" href="/"><span class="site-logo">H</span><span><strong>HENDY</strong><small>DIGITAL ECOSYSTEM</small></span></a>
+    <p>✨ Công nghệ kết nối giá trị thật.</p>
+    <nav><a href="/app-store/">App Store</a><a href="/miniapp/">Mini App</a><a href="/privacy/">Quyền riêng tư</a><a href="/terms/">Điều khoản</a><a href="https://t.me/Hendy_Support_Group">Hỗ trợ</a></nav>
+    <small>© <span id="year"></span> HENDY Cybertech.</small>
+  </footer>
+  <script src="/assets/deployment-config.js"></script><script src="/assets/site.config.js"></script><script src="/assets/site.js" defer></script>
+</body>
+</html>

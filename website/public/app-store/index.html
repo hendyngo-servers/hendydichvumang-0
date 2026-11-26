@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a1020">
+  <meta name="description" content="HENDY App Store — kho ứng dụng, phần mềm và công cụ số đa nền tảng.">
+  <link rel="canonical" href="https://hendydichvumang-szad.onrender.com/app-store/">
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/app-store/style.css">
+  <title>HENDY App Store · Kho ứng dụng VIP PRO</title>
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="/app-store/" aria-label="HENDY App Store">
+      <span class="brand-mark">H</span>
+      <span class="brand-copy"><b>HENDY</b><small>APP STORE · VIP PRO</small></span>
+    </a>
+    <nav class="top-nav" aria-label="Điều hướng chính">
+      <a href="/">Hệ sinh thái</a>
+      <a class="active" href="/app-store/">Kho ứng dụng</a>
+      <a href="/miniapp/">Mini App</a><a href="https://t.me/hendy_dichvu_BOT" target="_blank" rel="noopener noreferrer">Telegram Bot ↗</a>
+    </nav>
+    <button id="mobile-menu-toggle" class="mobile-menu-toggle" type="button" aria-expanded="false" aria-label="Mở menu"><i class="fa-solid fa-bars"></i></button>
+  </header>
+  <main class="page-shell">
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow"><i class="fa-solid fa-crown"></i> HENDY DIGITAL DISTRIBUTION</span>
+        <h1>KHO PHẦN MỀM <span>THƯỢNG HẠNG</span></h1>
+        <p class="hero-lead">Ứng dụng, công cụ và tiện ích số trong một kho tải tập trung.</p>
+        <p class="hero-description">Tìm ứng dụng theo nền tảng, xem thông tin phiên bản và tải các bản phát hành đã được kiểm tra và công khai.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#catalog"><i class="fa-solid fa-grid-2"></i> Khám phá ứng dụng</a>
+          <a class="button secondary" href="/miniapp/"><i class="fa-solid fa-user"></i> Khu vực thành viên</a>
+        </div>
+        <div class="device-hint" id="device-hint" aria-live="polite">Đang nhận diện thiết bị…</div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="halo halo-a"></div><div class="halo halo-b"></div>
+        <div class="store-window">
+          <div class="window-bar"><span></span><span></span><span></span><small>HENDY / STORE</small></div>
+          <div class="window-brand"><div class="window-logo">H</div><div><b>APP STORE</b><small>SECURE RELEASE CHANNEL</small></div></div>
+          <div class="window-line"><i class="fa-brands fa-windows"></i><span>Windows</span><b>Verified release</b></div>
+          <div class="window-line"><i class="fa-brands fa-android"></i><span>Android</span><b>APK</b></div>
+          <div class="window-line"><i class="fa-brands fa-apple"></i><span>Apple platforms</span><b>iOS / macOS</b></div>
+          <div class="window-foot"><i class="fa-solid fa-shield-halved"></i> PRIVATE STORAGE · SHA-256</div>
+        </div>
+        <span class="floating-label label-top">MULTI PLATFORM</span>
+        <span class="floating-label label-bottom">RELEASE MANAGER</span>
+      </div>
+    </section>
+    <section id="catalog" class="catalog-section">
+      <div class="section-heading">
+        <div><span class="eyebrow">01 / APPLICATION LIBRARY</span><h2>Khám phá <em>ứng dụng</em></h2><p>Chỉ hiển thị bản phát hành đã được duyệt và công khai.</p></div>
+        <span id="api-status" class="api-status pending" role="status" aria-live="polite"><i class="fa-solid fa-circle"></i> Đang kết nối API</span>
+      </div>
+      <div class="catalog-toolbar">
+        <label class="search-box" for="search-input"><i class="fa-solid fa-magnifying-glass"></i><input id="search-input" type="search" placeholder="Tìm ứng dụng, phiên bản, nền tảng…" autocomplete="off"><kbd>/</kbd></label>
+        <div class="catalog-sort"><label for="sort-select">Sắp xếp</label><select id="sort-select"><option value="default">Thứ tự đề xuất</option><option value="name">Tên A–Z</option><option value="version">Phiên bản cao nhất</option><option value="platform">Nền tảng</option></select></div>
+        <div class="filter-row">
+          <div class="filter-group" role="group" aria-label="Lọc danh mục">
+            <span class="filter-label">Danh mục</span>
+            <button class="filter-chip active" type="button" data-category="all">Tất cả</button>
+            <button class="filter-chip" type="button" data-category="tools">Công cụ</button>
+            <button class="filter-chip" type="button" data-category="codes">Code</button>
+            <button class="filter-chip" type="button" data-category="vip">VIP</button>
+            <button class="filter-chip" type="button" data-category="minigame">Mini Game</button>
+            <button class="filter-chip" type="button" data-category="otp">OTP</button>
+            <button class="filter-chip" type="button" data-category="proxy">Proxy</button>
+          </div>
+          <div class="filter-group" role="group" aria-label="Lọc nền tảng">
+            <span class="filter-label">Nền tảng</span>
+            <button class="filter-chip active" type="button" data-platform="all">Tất cả</button>
+            <button class="filter-chip" type="button" data-platform="windows">Windows</button>
+            <button class="filter-chip" type="button" data-platform="android">Android</button>
+            <button class="filter-chip" type="button" data-platform="macos">macOS</button>
+            <button class="filter-chip" type="button" data-platform="ios">iOS</button>
+            <button class="filter-chip" type="button" data-platform="linux">Linux</button>
+            <button class="filter-chip" type="button" data-platform="web">Web</button>
+          </div>
+        </div>
+        <div class="catalog-meta"><span id="catalog-count">Đang tải danh mục…</span><button id="refresh-catalog" class="refresh-button" type="button"><i class="fa-solid fa-rotate"></i> Làm mới</button></div>
+      </div>
+      <div id="app-grid" class="app-grid" aria-live="polite">
+        <div class="catalog-state"><i class="fa-solid fa-spinner fa-spin"></i><b>Đang tải kho ứng dụng HENDY</b><span>Đang lấy thông tin bản phát hành từ máy chủ quản trị.</span></div>
+      </div>
+    </section>
+    <section class="trust-section">
+      <div class="trust-card"><span><i class="fa-solid fa-shield-halved"></i></span><div><b>Quản lý bản phát hành</b><small>Binary được lưu trong kho riêng và chỉ công khai sau khi hoàn tất kiểm duyệt.</small></div></div>
+      <div class="trust-card"><span><i class="fa-solid fa-fingerprint"></i></span><div><b>SHA-256 checksum</b><small>Kiểm tra tính toàn vẹn của tệp tải xuống trước khi cài đặt.</small></div></div>
+      <div class="trust-card"><span><i class="fa-solid fa-mobile-screen-button"></i></span><div><b>Đa nền tảng</b><small>Hướng dẫn tải được điều chỉnh theo Android, Windows, macOS, iOS và Linux.</small></div></div>
+    </section>
+
+  </main>
+  <footer class="footer"><div class="footer-inner">
+    <a class="brand footer-brand" href="/app-store/"><span class="brand-mark">H</span><span class="brand-copy"><b>HENDY</b><small>APP STORE</small></span></a>
+    <p>© <span id="year"></span> HENDY Digital Ecosystem. Bản phát hành được quản lý bởi HENDY.</p>
+    <div><a href="/privacy/">Quyền riêng tư</a><a href="/terms/">Điều khoản</a><a href="/">Trang chủ HENDY</a><a href="/miniapp/">Mini App</a></div>
+  </div></footer>
+  <div id="release-modal" class="modal" hidden>
+    <button class="modal-backdrop" type="button" data-close-modal aria-label="Đóng chi tiết"></button>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-head"><span class="eyebrow">HENDY APP STORE / RELEASE DETAILS</span><button class="modal-close" type="button" data-close-modal aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button></div>
+      <div id="modal-content"></div>
+    </section>
+  </div>
+  <script src="/assets/deployment-config.js"></script><script src="/app-store/config.js"></script><script src="/app-store/app.js" defer></script>
+</body>
+</html>

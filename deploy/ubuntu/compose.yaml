@@ -1,0 +1,55 @@
+name: hendy
+services:
+  hendy-app:
+    build:
+      context: ../..
+      dockerfile: telegram-bot/Dockerfile
+    image: hendy-telegram-bot:ubuntu
+    restart: unless-stopped
+    env_file:
+      - ./hendy.env
+    environment:
+      PORT: "10000"
+      APP_URL: "https://${HENDY_PUBLIC_DOMAIN}"
+      WEBSITE_PUBLIC_URL: "${WEBSITE_PUBLIC_URL:-https://hendydichvumang-szad.onrender.com}"
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-https://hendydichvumang-szad.onrender.com}"
+    expose:
+      - "10000"
+    volumes:
+      - hendy_storage:/var/www/app/storage
+    healthcheck:
+      test:
+        - CMD
+        - php
+        - -r
+        - "if (@file_get_contents('http://127.0.0.1:10000/healthz') === false) { exit(1); } exit(0);"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+      - hendy
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      HENDY_PUBLIC_DOMAIN: "${HENDY_PUBLIC_DOMAIN:?Set HENDY_PUBLIC_DOMAIN in hendy.env}"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      hendy-app:
+        condition: service_healthy
+    networks:
+      - hendy
+networks:
+  hendy:
+volumes:
+  hendy_storage:
+  caddy_data:
+  caddy_config:

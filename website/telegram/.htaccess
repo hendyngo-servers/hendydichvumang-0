@@ -1,0 +1,3 @@
+# These HTML files are copied into the Bot container outside its DocumentRoot.
+# Never serve them directly from the public Website virtual host.
+Require all denied

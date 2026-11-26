@@ -1,28 +1,12 @@
 {
-  "name": "hendy-multi-agent",
-  "version": "1.0.0",
+  "name": "hendydichvumang-neon-runtime",
   "private": true,
-  "description": "HENDY Multi-Agent orchestration platform",
   "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
+  "engines": { "node": ">=20" },
   "scripts": {
-    "start": "node src/server.js",
-    "worker": "node src/worker.js",
-    "migrate": "node src/migrate.js",
-    "test": "node --test",
-    "verify": "npm test"
+    "build": "node --check neon-functions/hendystorage/index.mjs && tsc -p tsconfig.json",
+    "test": "node --test tests/neon-storage-function.test.mjs"
   },
-  "dependencies": {
-    "dotenv": "^17.2.3",
-    "express": "^5.1.0",
-    "express-rate-limit": "^8.1.0",
-    "helmet": "^8.1.0",
-    "pg": "^8.16.3",
-    "zod": "^4.1.12"
-  },
-  "devDependencies": {
-    "supertest": "^7.1.4"
-  }
+  "dependencies": { "@neon/config": "^1.13.0" },
+  "devDependencies": { "typescript": "^5.8.0" }
 }
