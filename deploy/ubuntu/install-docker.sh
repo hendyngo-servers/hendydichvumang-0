@@ -19,7 +19,7 @@ if [[ "$arch" != "amd64" ]]; then
   echo "Yêu cầu amd64; kiến trúc hiện tại: $arch." >&2
   exit 1
 fi
-conflicts=(docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc)
+conflicts=(docker.io docker-doc docker-compose docker-compose-v2 docker-buildx podman-docker containerd runc)
 installed=()
 for package in "${conflicts[@]}"; do
   if dpkg-query -W -f='${db:Status-Status}' "$package" 2>/dev/null | grep -qx installed; then

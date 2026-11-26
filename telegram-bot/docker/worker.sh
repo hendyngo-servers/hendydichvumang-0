@@ -3,6 +3,8 @@ set -euo pipefail
 
 cd /var/www/app
 
+video_processor_secret="${VIDEO_PROCESSOR_SECRET:-}"
+ai_cover_callback_secret="${AI_COVER_CALLBACK_SECRET:-}"
 worker_pids=()
 start_worker() {
     local label="$1"
@@ -30,7 +32,7 @@ if [[ "${AI_MEDIA_QUEUE_ENABLED:-false}" == "true" ]]; then
 fi
 
 if [[ "${VIDEO_WORKER_ENABLED:-false}" == "true" ]]; then
-    if [[ -z "${VIDEO_PROCESSOR_URL:-}" || ${#VIDEO_PROCESSOR_SECRET} -lt 32 || -z "${APP_URL:-}" ]]; then
+    if [[ -z "${VIDEO_PROCESSOR_URL:-}" || ${#video_processor_secret} -lt 32 || -z "${APP_URL:-}" ]]; then
         echo "VIDEO_WORKER_ENABLED=true requires HTTPS APP_URL, VIDEO_PROCESSOR_URL and a 32+ character VIDEO_PROCESSOR_SECRET." >&2
         exit 1
     fi
@@ -46,7 +48,7 @@ if [[ "${CODE_TELEGRAM_WORKER_ENABLED:-false}" == "true" ]]; then
 fi
 
 if [[ "${AI_COVER_WORKER_ENABLED:-false}" == "true" ]]; then
-    if [[ "${AI_COVER_ENABLED:-false}" != "true" || -z "${AI_COVER_WORKER_URL:-}" || ${#AI_COVER_CALLBACK_SECRET} -lt 32 ]]; then
+    if [[ "${AI_COVER_ENABLED:-false}" != "true" || -z "${AI_COVER_WORKER_URL:-}" || ${#ai_cover_callback_secret} -lt 32 ]]; then
         echo "AI_COVER_WORKER_ENABLED=true requires AI_COVER_ENABLED, AI_COVER_WORKER_URL and a 32+ character AI_COVER_CALLBACK_SECRET." >&2
         exit 1
     fi

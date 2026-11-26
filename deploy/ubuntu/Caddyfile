@@ -1,9 +1,16 @@
 {$HENDY_PUBLIC_DOMAIN} {
     encode zstd gzip
+
     header {
+        Strict-Transport-Security "max-age=31536000"
         X-Content-Type-Options "nosniff"
         Referrer-Policy "strict-origin-when-cross-origin"
-        X-Frame-Options "DENY"
+        X-Frame-Options "SAMEORIGIN"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        -Server
     }
-    reverse_proxy hendy-app:10000
+
+    reverse_proxy hendy-app:10000 {
+        header_up Host {http.request.host}
+    }
 }

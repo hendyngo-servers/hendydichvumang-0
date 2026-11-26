@@ -76,12 +76,23 @@ jobs:
           bash -n deploy/ubuntu/install-service.sh
           bash -n deploy/ubuntu/update.sh
           bash -n deploy/ubuntu/verify.sh
+          bash -n deploy/ubuntu/rollback.sh
+          bash -n telegram-bot/docker/start.sh
+          bash -n telegram-bot/docker/worker.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test Ubuntu VPS topology and safety defaults
+        run: node --test tests/ubuntu-vps-deployment.test.mjs
       - name: Validate Docker Compose model
         run: |
           docker compose version
           cp deploy/ubuntu/hendy.env.example deploy/ubuntu/hendy.env
           docker compose --env-file deploy/ubuntu/hendy.env -f deploy/ubuntu/compose.yaml config --quiet
+          COMPOSE_PROFILES=workers docker compose --env-file deploy/ubuntu/hendy.env -f deploy/ubuntu/compose.yaml config --quiet
           rm deploy/ubuntu/hendy.env
+      - name: Build the production Ubuntu Bot/API image
+        run: docker build --pull --file telegram-bot/Dockerfile --tag hendy-ubuntu-ci .
   neon-runtime:
     name: Neon Function build and tests
     runs-on: ubuntu-latest

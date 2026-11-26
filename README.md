@@ -1,150 +1,119 @@
 # HENDY DIGITAL ECOSYSTEM
 
-Production monorepo for one Telegram Bot backend and one public Static Website.
+Production monorepo for one Telegram Bot backend and one public Website.
 
-## Ubuntu 26.04 VPS deployment target
+## Primary deployment: Ubuntu 26.04 LTS VPS
 
-This repository includes a Docker Compose + Caddy + systemd deployment for Ubuntu 26.04 LTS amd64. See `deploy/ubuntu/README.md`. The VPS path is prepared but is not live until the owner supplies the VPS domain/DNS and runtime secrets, verifies the existing PostgreSQL database, and performs the explicit webhook cutover. The initial VPS configuration keeps `WEBHOOK_AUTO_REGISTER=false` and `RUN_MIGRATIONS_ON_START=false`; it does not reset or migrate production data. Existing Render configuration is retained as a fallback/reference and is not changed by this source PR.
+The production deployment target is Ubuntu 26.04 LTS (64-bit AMD64) using Docker Compose, Caddy HTTPS and systemd. The one-domain VPS setup serves the public Website, App Store, Mini App, Admin and API from the same HTTPS origin.
 
-## Production architecture
+- Website public assets: website/public/
+- PHP 8.3 Telegram Bot and API: telegram-bot/
+- Authenticated Admin UI: /admin
+- Customer portal and Telegram Mini App: /customer, /miniapp
+- Reverse proxy and automatic TLS: deploy/ubuntu/Caddyfile
+- Optional dedicated queue workers: Compose profile workers
+- Persistent local files/certificates: named Docker volumes; database remains PostgreSQL.
 
-- **Static Site:** Render service name `hendydichvumang`, source `website/public/`.
-- **Current working Static Site URL:** `https://hendydichvumang-szad.onrender.com`.
-- **Telegram Bot:** Render service `hendydichvumang-telegram-bot`, built from `telegram-bot/Dockerfile`.
-- **Admin:** Browser-based Admin Dashboard is served from the authenticated Bot backend at `https://hendydichvumang-telegram-bot.onrender.com/admin`. Admin and customer UI files are stored in `website/telegram/`, outside the Static Site publish directory.
-- **PostgreSQL:** The Bot connects to the database selected by the path component of its Render `DATABASE_URL`. Do not infer the database name from the Neon project slug or repository name. Run `php bin/database-doctor.php` in the Bot Shell to print the active database name, role, host and migration status without revealing credentials.
+See the complete [Ubuntu 26.04 VPS deployment guide](deploy/ubuntu/README.md).
 
-The clean hostname `https://hendydichvumang.onrender.com` currently resolves to the Bot API, not the Static Site. The Static Site therefore uses its verified Render subdomain with the `-szad` suffix until Render releases the old hostname. Do not point Website links or canonical metadata at the Bot API hostname.
+**Deployment status:** source code and CI checks are prepared for Ubuntu VPS. A real VPS is not considered deployed until the owner supplies DNS/domain and private runtime settings, verifies the exact PostgreSQL database, runs the installation, checks HTTPS/API/database health and explicitly transfers the Telegram webhook. This repository change does not connect to a VPS, change Render, apply production migrations or touch production data.
 
-## Website
+## Production architecture and data safety
 
-Everything under `website/public/` is public static content: HTML, CSS, JavaScript, SVG, robots, sitemap and legal pages. It does not connect to PostgreSQL, process payments, or contain Bot credentials.
+- Exactly one production Telegram Bot is supported: BOT1_TOKEN.
+- The PHP Bot/API is the only backend for member accounts, wallets, wallet ledger, deposits, orders, vouchers, tickets, provider records and supplier readiness.
+- PostgreSQL is the single source of truth. On the VPS setup, configure DATABASE_URL to the existing HENDY PostgreSQL database (for example the current Neon database) when preserving user balances and order history. The Compose stack does not create a parallel wallet database or run a local Postgres by default.
+- Runtime DB role is DML-only. Production startup keeps RUN_MIGRATIONS_ON_START=false; database migrations require a reviewed, one-off direct/unpooled owner connection and exact database confirmation.
+- Caddy routes the same HTTPS hostname to the PHP application. When Website and API share that hostname, the backend serves bundled public Website files locally; it must not redirect the homepage back to itself.
+- Existing render.yaml and Render-specific environment variables remain for legacy/fallback reference. Ubuntu VPS is the deployment target documented here.
 
-Public tabs: Trang chủ, App Store, Dịch vụ mạng, AI Studio, Code Telegram, Giới thiệu. The public navigation intentionally does not expose "Trung tâm khách hàng".
+## Website and member surfaces
 
-## Telegram Bot
+Everything under website/public/ is public static content: HTML, CSS, JavaScript, SVG, favicon, robots, sitemap and legal pages. It does not connect directly to PostgreSQL and never receives Bot/database/provider secrets.
 
-- Exactly one production Bot is supported; only `BOT1_TOKEN` is read.
-- The webhook bootstrap calls Telegram `getMe()`, registers and verifies the webhook at the Bot service's own Render URL, then stores the public Bot username in `app_settings.primary_bot_url`.
-- `BOT1_PUBLIC_URL` is an optional override; referral links otherwise use the auto-detected Bot URL.
-- One-time login tickets are short-lived, stored hashed, consumed atomically, and exchanged for a signed HttpOnly website-session cookie.
-- Admin access requires the user's Telegram numeric ID to be in `ADMIN_ID` or `ADMIN_IDS`.
+Public pages include Trang chủ, App Store, Dịch vụ mạng, AI Studio, Code Telegram, privacy and terms. The public navigation intentionally does not expose the Admin dashboard.
 
-## Admin Control Center
+Member/Admin routes are served by the authenticated PHP backend:
+- /: public Website homepage.
+- /app-store/: public App Store catalogue.
+- /miniapp/ and /customer: member Mini App / customer centre.
+- /admin: Admin Dashboard.
+- /privacy/ and /terms/: legal pages.
+- /api/v1: API discovery.
+- /healthz: web health check; /api/health: application/API health check.
 
-The Admin Dashboard is a browser-first control plane protected by the Telegram Admin allowlist. It includes:
-- Member accounts and linked accounts, manual wallet adjustments with audit entries, orders, deposit approvals, customer tickets and vouchers.
-- Product/catalog editing, Giftcode, Bot menu labels/descriptions/styles, shared configuration and community links.
-- Bot operations: normal mode, maintenance, upgrade window, scheduled end time and operator message. Admin accounts remain able to enter during maintenance.
-- HomeProxy enable/disable, encrypted member key management, video/Code Telegram job operations, module review, AI Studio controls and AI Cover licensed-preset management.
-- Audit log for administrative changes.
+The Website runtime configuration contains public origin information only. It must never contain a Bot token, database URL, session secret or provider credential.
 
-Do not use a manual wallet adjustment as a substitute for payment reconciliation. Deposit requests must be matched to bank evidence before approval.
+## Telegram Bot and Admin
 
-## AI Features
+The Bot uses PHP 8.3, Telegram webhook handling and PostgreSQL. It includes member profiles, wallet and ledger, deposits, orders, vouchers, VIP, referral, tickets, Code Telegram, Proxy/HomeProxy, Mini Game/Tool modules and existing Admin controls.
 
-The Telegram main menu groups creative tools under **🤖 TÍNH NĂNG AI**:
-- **AI Cover:** licensed RVC voice presets, owner consent and license reference, private Neon Object Storage, verified worker and HMAC callback. At least one enabled preset must pass a recent worker check before member access can open.
-- **Tạo âm nhạc AI:** prompt → PostgreSQL job queue → ElevenLabs Music worker → send audio back to the same Telegram user.
-- **Chỉnh sửa ảnh AI:** prompt + private Telegram photo → PostgreSQL job queue → OpenAI image edit → send edited image to the user.
+Admin access is checked server-side against ADMIN_ID / ADMIN_IDS. The Admin Dashboard includes member/order/deposit management, catalog and product configuration, provider registry, supplier readiness, Bot operations/maintenance, tickets, voucher/giftcode, release/module review and audit log.
 
-AI provider keys are secrets and must only be configured in Render Environment. The Admin Dashboard never displays these values. AI_MEDIA_QUEUE_ENABLED=false, AI_COVER_ENABLED=false and AI_COVER_WORKER_ENABLED=false are fail-closed defaults. After provider credentials and worker are configured, an Admin must enable AI Studio globally and then enable each tool separately. AI Cover additionally requires a working RVC worker, callback HMAC secret, Neon Object Storage and a verified licensed preset.
+Do not use a manual wallet adjustment as a substitute for payment reconciliation. Bank callbacks remain disabled until a provider-specific signature adapter has been implemented and verified.
 
-AI tools currently have a per-user daily job limit and one active job per user. Automatic AI wallet billing is not enabled; users are not charged for these tasks. Do not advertise paid AI packages until an explicit price/ledger flow has been implemented and tested.
+## Provider Registry and Supplier Readiness
 
-The /ai command opens the AI submenu. The /cancel command clears the current prompt/photo input. Image and audio workflows are restricted to private Bot chats.
+The Admin Provider & Service Registry stores provider metadata and **Environment variable names**, not secret values. Supplier Readiness blocks public catalogue/checkout access until the source permission, supplier access, HTTPS evidence, stock and approved fulfillment mode pass the checks.
 
-## Database reset and recovery
+A local configuration check only confirms the variable name/presence and registered adapter family. It is not a live provider API test and does not prove a supplier account, resale right or fulfillment. Generic API adapters are not considered production integrations until their authentication/signature, timeouts, idempotency, error handling, webhook verification and tests exist.
 
-On 2026-11-13, records were cleared from the `public` schema of both `hendydichvumang` and `hendydichvumang_website`; tables and constraints were retained. Neon Auth database `neondb` was not changed.
-
-Recovery branch retained in Neon:
-`backup-before-full-reset-2026-11-13`.
-
-The Bot base schema remains in `telegram-bot/database/schema.sql`; additive changes are versioned under `telegram-bot/database/migrations/`. Runtime uses `RUN_MIGRATIONS_ON_START=false`; the Bot runtime role performs DML only, while a separate direct database-owner/migration URL is used for reviewed schema changes.
-
-## Product and provider activation
-
-The Admin product form records supplier identity, supplier product reference, source/rights evidence, verification states and the Environment variable NAME only. Public product lists and both checkout paths fail closed until the source permission is authorized, supplier access is verified, evidence URLs are HTTPS, stock is available and manual fulfillment is selected. API fulfillment stays locked until a dedicated tested adapter exists.
-
-Before deploying this readiness change to an existing Neon database, follow [the safe migration and provider onboarding checklist](docs/product-provider-onboarding.md) using the database owner/migration role. Production intentionally keeps `RUN_MIGRATIONS_ON_START=false`; CI success alone does not apply a production migration.
-
-## Provider & Service Registry
-
-The existing browser Admin at `/admin` now includes a Provider & Service Registry
-for the service inventory, supplier records, adapter family, Environment variable
-names, API-level service locks and maintenance messages. Provider credentials remain
-in Render Environment; the dashboard never reads or returns their values. The
-configuration check is local only and does not claim a live provider API test.
-
-Before deploying the registry change, apply
-`telegram-bot/database/migrations/20261113_provider_service_registry.sql` to Neon
-using the database owner/migration role. Production keeps
-`RUN_MIGRATIONS_ON_START=false`. See
-[Provider & Service Registry rollout](docs/provider-service-registry.md) for the
-migration, controls and provider activation checklist.
-
-## Render environment
-
-Set secrets only in Render Environment. Never commit live credentials.
-
-Required Bot values:
-- `BOT1_TOKEN`
-- `ADMIN_ID` or `ADMIN_IDS`
-- `DATABASE_URL` pointing to the explicitly selected PostgreSQL database for this Bot service (verify with `php bin/database-doctor.php`)
-- `DATABASE_SSL=true`
-
-Set `WEBSITE_PUBLIC_URL=https://hendydichvumang-szad.onrender.com`. Render injects `RENDER_EXTERNAL_URL` for the Bot; webhook registration uses that service-owned URL. Optional bank, AI, OCR and WebSocket integrations stay disabled until provider credentials and migrations are verified.
-
-## Database diagnostics and migrations
-
-Use the Render Bot service Shell to identify the database actually referenced by its environment:
-
-```bash
-cd /var/www/app
-php bin/database-doctor.php
-```
-
-The doctor is read-only. It prints only the database name, role, host, connection-pool status and migration inventory; it never prints connection strings or secret values.
-
-Before a migration, make a Neon restore point and obtain the direct/unpooled owner URL for the confirmed database. Set it only in the one-off Shell process as `MIGRATION_DATABASE_URL`, then run the dry-run:
-
-```bash
-export MIGRATION_DATABASE_URL='[direct owner URL supplied privately by the operator]'
-php bin/migrate.php
-```
-
-Review the printed database name, role, host and pending migrations. Only after the target is confirmed, apply using its exact database name:
-
-```bash
-php bin/migrate.php --apply --expect-database='[confirmed database name]'
-```
-
-The migration runner rejects pooled Neon URLs, the restricted `hendy_bot_app` role, database-name mismatches, partial base schemas and migration checksum drift. Each additive migration runs in its own transaction and is recorded in `schema_migrations`. The command defaults to dry-run and does not print the URL.
-
-
-## Ubuntu 26.04 VPS deployment (alternative)
-
-The VPS option reuses the same PHP Bot/API, PostgreSQL data model, member wallet,
-orders, Provider Registry and Supplier Readiness already present in this monorepo.
-It does not create a second bot backend or a separate wallet database. See
-[Ubuntu 26.04 deployment guide](deploy/ubuntu/README.md).
-
-The VPS is an alternative to the current Render Bot service. Keep
-`WEBHOOK_AUTO_REGISTER=false` during initial validation and follow the documented
-single-webhook cutover before switching the production Telegram bot token.
-Production schema migrations remain manual and must follow the existing database
-owner runbooks; ordinary startup keeps `RUN_MIGRATIONS_ON_START=false`.
-
-## Local development
-
-1. Copy `telegram-bot/.env.example` to `telegram-bot/.env`.
-2. Populate credentials locally; never commit `.env`.
-3. Run `composer install` in `telegram-bot/`.
-4. Run `composer validate-config`, `composer lint` and `composer test`.
+See [Provider & Service Registry](docs/provider-service-registry.md) and [product/provider onboarding](docs/product-provider-onboarding.md).
 
 ## Multi-Agent Control Center
 
-The authenticated Admin Dashboard now includes a PostgreSQL-backed Agent Registry, sequential Hub workflows, queue/run/event history, worker heartbeat and a human approval queue. Workflows include Research → Content, Research → Sales, Research → Content → Video, Support-only and a selected custom Agent. Results remain drafts and require Admin approval; the module does not publish, send Telegram messages, charge the wallet or modify customer records.
+Multi-Agent remains integrated into the existing PHP/Admin/PostgreSQL application; it is not a second Node.js service or a separate data store.
 
-The worker is disabled by default. Apply the additive migration telegram-bot/database/migrations/20261120_multi_agent_control_center.sql with the existing owner-role migration runbook first. Then configure OPENAI_API_KEY and explicitly set MULTI_AGENT_ENABLED=true in the Bot Render Environment. See docs/MULTI-AGENT-CONTROL-CENTER.md. Keep RUN_MIGRATIONS_ON_START=false.
+It includes the Agent Registry, sequential workflows, PostgreSQL queue/run/event history, heartbeat/stale-task recovery and an Admin approval queue. Outputs remain drafts until Admin review. The module does not publish content, message customers, charge wallets, approve deposits or mutate customer orders.
+
+The dedicated worker is opt-in. Apply telegram-bot/database/migrations/20261120_multi_agent_control_center.sql using the migration runbook, configure OPENAI_API_KEY privately, set MULTI_AGENT_ENABLED=true and activate the Compose workers profile. Do not enable it before the migration and provider credentials are verified.
+
+See [Multi-Agent rollout](docs/MULTI-AGENT-CONTROL-CENTER.md).
+
+## Background workers
+
+The Ubuntu Compose web container does not run queue workers inline. The optional hendy-worker service runs as the unprivileged www-data user under the workers profile. Workers remain disabled by default and are activated only after their respective migration, provider credentials, callback and Admin module flags are verified.
+
+Supported optional worker processes include Multi-Agent, AI media, video dispatch, Code Telegram OCR and AI Cover dispatch. WebSocket, bank callback and automatic provider fulfillment remain disabled unless a dedicated, reviewed deployment path is configured.
+
+## Secrets and environment
+
+For Ubuntu VPS, copy deploy/ubuntu/hendy.env.example to deploy/ubuntu/hendy.env, set file permissions to 600 and keep the file out of Git. Do not paste live credentials into source files, the Admin source editor, GitHub issues or chat.
+
+Required:
+- HENDY_PUBLIC_DOMAIN: public Bot/Website hostname without scheme/path.
+- WEBSITE_PUBLIC_URL: same-origin HTTPS URL, for example https://bot.example.com.
+- ALLOWED_ORIGINS: comma-separated allowed Website origins; same-origin is sufficient for a one-domain deployment.
+- BOT1_TOKEN and ADMIN_ID or ADMIN_IDS.
+- DATABASE_URL pointing to the exact existing HENDY PostgreSQL database.
+- DATABASE_SSL=true for Neon/external TLS PostgreSQL.
+
+Provider/API tokens such as OPENAI_API_KEY, ELEVENLABS_API_KEY, NEON_STORAGE_FUNCTION_KEY, VIDEO_PROCESSOR_SECRET, AI_COVER_CALLBACK_SECRET and HENDY_GITHUB_TOKEN belong only in the private VPS environment file and remain disabled until their modules are reviewed.
+
+## Database migrations
+
+The Bot base schema is telegram-bot/database/schema.sql; additive changes live under telegram-bot/database/migrations/. Never run schema migrations automatically during container startup.
+
+Before each production migration:
+1. Create/confirm a Neon restore point or equivalent PostgreSQL backup.
+2. Run php bin/database-doctor.php inside the VPS container and record exact database, role, host and pending migration inventory.
+3. Supply MIGRATION_DATABASE_URL only to a one-off command/container using a direct/unpooled owner/migration connection.
+4. Run the migration dry-run first. Apply only after verifying the exact database name and every pending migration.
+5. Run the read-only doctor again and verify the expected schema. Do not reset the database or rewrite users, wallet ledger, orders or payment history as part of a deployment.
+
+Detailed steps: [Production PostgreSQL migration runbook](docs/PRODUCTION-MIGRATION-RUNBOOK.md).
+
+## Legacy Render reference
+
+render.yaml is retained for the previously configured Render deployment and rollback/reference purposes. It is not the primary Ubuntu deployment path. Do not leave Render and the VPS both auto-registering the same Telegram webhook. Perform the documented one-at-a-time webhook cutover only after the VPS passes HTTPS, database, API and member-flow verification.
+
+## Local development and tests
+
+Requirements: PHP 8.3+, Composer, PostgreSQL, PHP extensions curl, mbstring, pdo_pgsql; Node.js 24+ for Website/Neon tests.
+
+- Copy telegram-bot/.env.example to telegram-bot/.env.
+- Populate local credentials; never commit .env.
+- Run composer install in telegram-bot/.
+- Run composer validate, composer lint, composer test and php scripts/secret-scan.php.
+
+GitHub Actions validates Website assets/config, PHP Bot lint/tests and secret scan, Neon Function build/tests, Ubuntu shell scripts and Docker Compose configuration.

@@ -19,6 +19,11 @@ telegram-bot
 *.zip
 *.log
 
+# Never send the live Ubuntu VPS environment file in any Docker build context.
+deploy/ubuntu/hendy.env
+deploy/ubuntu/hendy.env.*
+!deploy/ubuntu/hendy.env.example
+
 # Include the Bot backend for the Bot Dockerfile, while excluding credentials.
 !telegram-bot/
 !telegram-bot/**

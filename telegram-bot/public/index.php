@@ -190,7 +190,7 @@ try {
         $reservedPrefixes = [
             '/api', '/webhook', '/admin', '/customer', '/customer-center',
             '/miniapp', '/mini-app', '/app', '/health', '/healthz',
-            '/legacy-login', '/ws',
+            '/legacy-login', '/ws', '/styles',
         ];
         $isReserved = false;
         foreach ($reservedPrefixes as $prefix) {
@@ -203,7 +203,7 @@ try {
         if (!$isReserved) {
             $websiteRoot = realpath(dirname(__DIR__, 2) . '/website/public');
             $relativePath = rawurldecode($path === '/' ? '/index.html' : $path);
-            $unsafePath = str_contains($relativePath, "\\0") || str_contains($relativePath, '\\\\')
+            $unsafePath = str_contains($relativePath, "\0") || str_contains($relativePath, '\\')
                 || str_starts_with($relativePath, '//');
             foreach (explode('/', $relativePath) as $segment) {
                 if ($segment === '.' || $segment === '..') {
@@ -257,6 +257,14 @@ try {
                 }
             }
         }
+    }
+
+    // Admin dashboard loads this single self-hosted stylesheet from outside the public Website tree.
+    if ($method === 'GET' && $path === '/styles/buttons.css') {
+        header('Content-Type: text/css; charset=utf-8');
+        header('Cache-Control: public, max-age=300');
+        readfile(dirname(__DIR__, 2) . '/website/telegram/admin-dashboard/styles/buttons.css');
+        exit;
     }
 
     if ($method === 'GET' && preg_match('#^/+KHACH-HANG/TRUNG-TAM-KHACH-HANG/index\\.php/?$#i', $path)) {

@@ -21,13 +21,13 @@ php bin/validate-config.php
 php bin/wait-for-database.php
 if [[ "${RUN_MIGRATIONS_ON_START:-false}" == "true" ]]; then
     # Production never runs DDL migrations during normal service startup.
-    # Use a one-off Render Shell with a direct Neon owner/migration URL instead.
+    # Use a one-off server shell with a direct Neon owner/migration URL instead.
     case "${APP_ENV:-production}" in
         local|development|test)
             ;;
         *)
             echo "TỪ CHỐI: Chỉ cho phép tự động migration trong môi trường local/development/test." >&2
-            echo "Dùng php bin/database-doctor.php để xem database đích; sau đó chạy php bin/migrate.php --apply --expect-database=<tên_db_đã_xác_nhận> trong Render Shell với MIGRATION_DATABASE_URL direct/owner." >&2
+            echo "Dùng php bin/database-doctor.php để xem database đích; sau đó chạy php bin/migrate.php --apply --expect-database=<tên_db_đã_xác_nhận> trong one-off server shell với MIGRATION_DATABASE_URL direct/owner." >&2
             exit 1
             ;;
     esac
@@ -57,7 +57,7 @@ if [[ "${WEBHOOK_AUTO_REGISTER:-true}" == "true" ]]; then
         fi
     done
     if [[ "$webhook_registered" != "true" ]]; then
-        # The service's existing webhook points to this stable Render origin.
+        # The configured webhook may still point to the previous service origin; no takeover is attempted here.
         # A transient Telegram API/network outage must not crash the web service.
         echo "CẢNH BÁO: Chưa xác minh lại được webhook sau 5 lần thử; giữ dịch vụ hoạt động và để lần khởi động tiếp theo thử lại." >&2
     fi
