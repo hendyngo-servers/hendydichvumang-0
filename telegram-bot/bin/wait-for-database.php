@@ -40,7 +40,7 @@ function databaseFailureHint(?Throwable $error): string
         }
     }
 
-    return 'Không xác định được nguyên nhân: kiểm tra DATABASE_URL trong Render Environment.';
+    return 'Không xác định được nguyên nhân: kiểm tra DATABASE_URL trong private VPS environment file.';
 }
 
 $timeout = max(0, min(300, Env::int('DB_STARTUP_WAIT_SECONDS', 120)));

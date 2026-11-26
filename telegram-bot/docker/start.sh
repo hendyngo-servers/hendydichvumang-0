@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd /var/www/app
 
-# Render terminates TLS and forwards all public HTTP/WebSocket traffic to PORT.
+# Caddy terminates TLS on Ubuntu VPS; Apache serves the private app/API network port.
 port="${PORT:-10000}"
 if ! [[ "$port" =~ ^[0-9]{1,5}$ ]] || (( port < 1 || port > 65535 )); then
     echo "PORT phải là số nguyên từ 1 đến 65535." >&2
@@ -65,9 +65,10 @@ else
     echo "WEBHOOK_AUTO_REGISTER=false; bỏ qua đăng ký webhook tự động."
 fi
 
-# Start independent workers only when explicitly enabled. All secrets are read from
-# Render Environment; they are never passed on command lines or printed to logs.
+# Optional inline worker mode preserves the legacy single-container runtime.
+# Ubuntu Compose sets HENDY_INLINE_WORKERS=false and runs a separate worker container.
 background_pids=()
+if [[ "${HENDY_INLINE_WORKERS:-true}" == "true" ]]; then
 if [[ "${AI_MEDIA_QUEUE_ENABLED:-false}" == "true" ]]; then
     if [[ -z "${OPENAI_API_KEY:-}" && -z "${ELEVENLABS_API_KEY:-}" ]]; then
         echo "AI_MEDIA_QUEUE_ENABLED=true nhưng chưa có OPENAI_API_KEY hoặc ELEVENLABS_API_KEY." >&2
@@ -132,6 +133,10 @@ if [[ "${WEBSOCKET_ENABLED:-false}" == "true" ]]; then
     background_pids+=("$!")
 fi
 
+else
+    echo "HENDY_INLINE_WORKERS=false; queue workers are managed by the dedicated hendy-worker Compose service."
+fi
+
 apache2-foreground &
 background_pids+=("$!")
 
@@ -150,5 +155,5 @@ set +e
 wait -n "${background_pids[@]}"
 status=$?
 set -e
-echo "Một tiến trình HENDY đã dừng (exit=$status); kết thúc container để Render khởi động lại." >&2
+echo "Một tiến trình HENDY đã dừng (exit=$status); kết thúc container để Docker khởi động lại." >&2
 exit "$status"

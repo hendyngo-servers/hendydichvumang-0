@@ -174,6 +174,91 @@ try {
     $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
     $path = parse_url((string) ($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/';
 
+    // When Website and Bot/API share one VPS hostname, serve the Website assets
+    // from the bundled public tree instead of redirecting the homepage to itself.
+    // Render's legacy split-host setup still redirects to its separate Static Site.
+    $websiteUrl = rtrim((string) (Env::get('WEBSITE_PUBLIC_URL') ?: Env::get('APP_URL', '')), '/');
+    $websiteParts = $websiteUrl !== '' ? parse_url($websiteUrl) : false;
+    $requestHost = strtolower((string) parse_url(
+        'https://' . (string) ($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''),
+        PHP_URL_HOST
+    ));
+    $websiteHost = is_array($websiteParts) ? strtolower((string) ($websiteParts['host'] ?? '')) : '';
+    $sameWebsiteHost = $requestHost !== '' && $websiteHost !== '' && hash_equals($websiteHost, $requestHost);
+
+    if ($method === 'GET' && $sameWebsiteHost) {
+        $reservedPrefixes = [
+            '/api', '/webhook', '/admin', '/customer', '/customer-center',
+            '/miniapp', '/mini-app', '/app', '/health', '/healthz',
+            '/legacy-login', '/ws',
+        ];
+        $isReserved = false;
+        foreach ($reservedPrefixes as $prefix) {
+            if ($path === $prefix || str_starts_with($path, $prefix . '/')) {
+                $isReserved = true;
+                break;
+            }
+        }
+
+        if (!$isReserved) {
+            $websiteRoot = realpath(dirname(__DIR__, 2) . '/website/public');
+            $relativePath = rawurldecode($path === '/' ? '/index.html' : $path);
+            $unsafePath = str_contains($relativePath, "\\0") || str_contains($relativePath, '\\\\')
+                || str_starts_with($relativePath, '//');
+            foreach (explode('/', $relativePath) as $segment) {
+                if ($segment === '.' || $segment === '..') {
+                    $unsafePath = true;
+                    break;
+                }
+            }
+
+            if (!$unsafePath && $websiteRoot !== false) {
+                $candidate = realpath($websiteRoot . DIRECTORY_SEPARATOR . ltrim($relativePath, '/'));
+                if ($candidate !== false && is_dir($candidate)) {
+                    $candidate = realpath($candidate . DIRECTORY_SEPARATOR . 'index.html');
+                }
+                $rootPrefix = rtrim($websiteRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+                $extension = $candidate !== false ? strtolower(pathinfo($candidate, PATHINFO_EXTENSION)) : '';
+                $allowedExtensions = ['html', 'css', 'js', 'mjs', 'json', 'xml', 'txt', 'svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'ico', 'woff', 'woff2', 'ttf', 'otf'];
+                if ($candidate !== false && is_file($candidate)
+                    && str_starts_with($candidate, $rootPrefix)
+                    && in_array($extension, $allowedExtensions, true)) {
+                    $content = file_get_contents($candidate);
+                    if (is_string($content)) {
+                        if (in_array($extension, ['html', 'js', 'mjs', 'xml', 'txt'], true)) {
+                            $content = str_replace('https://hendydichvumang-szad.onrender.com', $websiteUrl, $content);
+                        }
+                        $contentTypes = [
+                            'html' => 'text/html; charset=utf-8',
+                            'css' => 'text/css; charset=utf-8',
+                            'js' => 'application/javascript; charset=utf-8',
+                            'mjs' => 'application/javascript; charset=utf-8',
+                            'json' => 'application/json; charset=utf-8',
+                            'xml' => 'application/xml; charset=utf-8',
+                            'txt' => 'text/plain; charset=utf-8',
+                            'svg' => 'image/svg+xml',
+                            'png' => 'image/png',
+                            'jpg' => 'image/jpeg',
+                            'jpeg' => 'image/jpeg',
+                            'webp' => 'image/webp',
+                            'gif' => 'image/gif',
+                            'ico' => 'image/x-icon',
+                            'woff' => 'font/woff',
+                            'woff2' => 'font/woff2',
+                            'ttf' => 'font/ttf',
+                            'otf' => 'font/otf',
+                        ];
+                        header('Content-Type: ' . ($contentTypes[$extension] ?? 'application/octet-stream'));
+                        header('Cache-Control: ' . ($extension === 'html' ? 'no-store' : 'public, max-age=300'));
+                        header('Content-Length: ' . strlen($content));
+                        echo $content;
+                        exit;
+                    }
+                }
+            }
+        }
+    }
+
     if ($method === 'GET' && preg_match('#^/+KHACH-HANG/TRUNG-TAM-KHACH-HANG/index\\.php/?$#i', $path)) {
         header('Content-Type: text/html; charset=utf-8');
         header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
