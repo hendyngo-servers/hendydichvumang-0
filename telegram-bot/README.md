@@ -1,6 +1,6 @@
 # HENDY BOT CYBERTECH
 
-Telegram Bot backend dùng PHP 8.3 + PostgreSQL, đặt trong `telegram-bot/` của monorepo `hendyngo-servers/hendydichvumang`. Website và Bot là hai Render Web Service riêng, dùng hai Neon database/role độc lập.
+Telegram Bot backend dùng PHP 8.3 + PostgreSQL, đặt trong `telegram-bot/` của monorepo `hendyngo-servers/hendydichvumang-0`. Trên Ubuntu VPS, Website, Mini App, Admin và Bot/API được phục vụ từ cùng một hostname HTTPS; PostgreSQL hiện có tiếp tục là nguồn dữ liệu chuẩn.
 
 ## Thành phần
 
@@ -12,7 +12,7 @@ Telegram Bot backend dùng PHP 8.3 + PostgreSQL, đặt trong `telegram-bot/` c�
 - Video job worker, callback HMAC, tùy chọn WebSocket realtime.
 - PostgreSQL schema/migration, Docker và Render Blueprint.
 
-Không có token, mật khẩu database hoặc khóa signing thật trong source. Tất cả credential phải cấu hình bằng Render Environment/GitHub Secrets.
+Không có token, mật khẩu database hoặc khóa signing thật trong source. Trên Ubuntu VPS, credential production chỉ đặt trong `deploy/ubuntu/hendy.env` với quyền file 600; không đưa vào GitHub, Website JavaScript, Admin editor hoặc log.
 
 ## URL
 
@@ -35,15 +35,15 @@ Trang chủ công khai dùng `apps/website/landing.html` với CSS/JS tự host 
 
 ## Cấu hình
 
-Các biến quan trọng cấu hình tại Render Environment:
+Các biến production quan trọng cấu hình trong private file `deploy/ubuntu/hendy.env` trên VPS:
 
 - `BOT1_TOKEN`: token của bot Telegram duy nhất.
 - `ADMIN_ID` hoặc `ADMIN_IDS`: Telegram ID của quản trị viên.
-- `DATABASE_URL`: Neon PostgreSQL database `hendydichvumang`, role `hendy_bot_app`.
+- `DATABASE_URL`: URI của đúng PostgreSQL database hiện đang giữ dữ liệu HENDY; không đoán database name theo project slug.
 - `DATABASE_SSL=true` cho Neon.
-- `WEBHOOK_AUTO_REGISTER=true`; Render cung cấp `RENDER_EXTERNAL_URL`.
+- Trên lần cài VPS đầu tiên, giữ `WEBHOOK_AUTO_REGISTER=false`; `APP_URL` được Compose tạo từ `HENDY_PUBLIC_DOMAIN`. Chỉ bật webhook khi hoàn tất cutover.
 - `TELEGRAM_WEBHOOK_SECRET` là tùy chọn; để trống, backend tạo secret ngẫu nhiên 256-bit và lưu trong PostgreSQL.
-- Khi container khởi động, `bin/register-webhook.php` gọi `getMe`, đăng ký duy nhất `https://<Render Bot domain>/webhook/telegram` bằng `setWebhook`, rồi xác minh bằng `getWebhookInfo`; `drop_pending_updates=false` để không xóa update đang chờ.
+- Khi được chủ động bật sau cutover, `bin/register-webhook.php` gọi `getMe`, đăng ký duy nhất `https://<HENDY_PUBLIC_DOMAIN>/webhook/telegram` bằng `setWebhook`, rồi xác minh bằng `getWebhookInfo`; `drop_pending_updates=false` để không xóa update đang chờ.
 - `BANK_WEBHOOK_ENABLED=false` cho đến khi có adapter kiểm tra chữ ký theo ngân hàng.
 - `NEON_STORAGE_FUNCTION_URL` và `NEON_STORAGE_FUNCTION_KEY` chỉ đặt nếu bật Object Storage.
 
@@ -64,17 +64,18 @@ php -S 127.0.0.1:8080 -t public
 
 Điền credential local của riêng bạn trong file `.env`; file này bị ignore. Schema production được quản lý bằng migration riêng; `RUN_MIGRATIONS_ON_START=false` để tránh tài khoản runtime tự chạy DDL.
 
-## Render / Docker
+## Ubuntu 26.04 VPS / Docker
 
-Blueprint ở repository root: `render.yaml`.
+Deployment chính nằm ở `deploy/ubuntu/`:
 
-- Bot build dùng `dockerfilePath: ./telegram-bot/Dockerfile`.
-- Docker context: `./telegram-bot`.
-- Render service: `hendydichvumang-telegram-bot`.
-- Health check: `/healthz`.
-- Database: Neon `hendydichvumang`, không dùng chung database Website.
+- Docker build context là repository root; Dockerfile là `telegram-bot/Dockerfile`.
+- Compose services: `hendy-app`, `caddy`; `hendy-worker` là profile tùy chọn `workers`.
+- Caddy terminate HTTPS trên port 80/443; Apache port 10000 chỉ expose nội bộ Docker.
+- systemd unit: `hendy-telegram-bot.service`.
+- Hướng dẫn cài, kiểm tra, cập nhật, rollback: `deploy/ubuntu/README.md`.
+- PostgreSQL: một database HENDY hiện có, không tạo một database ví/đơn hàng thứ hai.
 
-Khi đã adopt Blueprint, các Git push trên `main` tự sync/deploy theo `autoDeployTrigger: checksPass`. Không tạo thêm Web Service thủ công trùng tên.
+`render.yaml` được giữ làm tham chiếu/fallback cho kiến trúc Render trước đây; không phải đường triển khai VPS chính.
 
 ## Dashboard Admin
 
@@ -100,9 +101,9 @@ GitHub Actions chạy lint/test Bot, lint PHP Website và test Neon Function.
 - SQL dùng PDO prepared statements; giao dịch ví dùng transaction/idempotency.
 - Bank callback để tắt cho đến khi xác minh chữ ký nhà cung cấp.
 - File upload được đưa vào vùng kiểm duyệt, không tự thực thi.
-- Website và Bot dùng hai Neon database/role riêng. Không tự đồng bộ số dư, đơn hàng hoặc hồ sơ tài khoản giữa hai database.
+- Website là bộ frontend tĩnh được phục vụ cùng hostname bởi PHP backend và không kết nối trực tiếp tới database. Bot/API dùng một PostgreSQL database HENDY hiện có làm nguồn dữ liệu cho thành viên, ví, ledger, đơn hàng, Provider Registry và Supplier Readiness.
 
-Nếu Bot Token cũ từng bị commit, hãy thu hồi token tại BotFather, tạo token mới và cập nhật `BOT1_TOKEN` trong Render; chỉ xóa file khỏi commit mới không xóa token khỏi Git history.
+Nếu Bot Token cũ từng bị commit, hãy thu hồi token tại BotFather, tạo token mới và cập nhật `BOT1_TOKEN` trong private `deploy/ubuntu/hendy.env`; chỉ xóa file khỏi commit mới không xóa token khỏi Git history.
 
 
 ## AI Media (tùy chọn, mặc định tắt)
@@ -115,7 +116,7 @@ Hai mục menu **TẠO ÂM NHẠC AI** và **CHỈNH SỬA ẢNH AI** dùng hàn
 - Tệp ảnh đầu vào chỉ được tải về tạm thời từ Telegram, kiểm tra loại ảnh/kích thước rồi xóa sau khi xử lý. Tệp kết quả cũng được xóa sau khi gửi.
 - Bảng `ai_media_jobs` là migration bổ sung; không tự tạo bảng ở runtime. Worker chỉ chạy khi `AI_MEDIA_QUEUE_ENABLED=true`, migration đã được áp dụng và API key tương ứng đã có.
 
-Cấu hình các biến trong Render Environment của Bot:
+Cấu hình các biến trong private `deploy/ubuntu/hendy.env` trên VPS:
 - `AI_MEDIA_QUEUE_ENABLED=false` (chỉ bật sau migration và khi đã cấu hình provider).
 - `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`: secrets; không commit và không nhập qua Telegram.
 - `OPENAI_IMAGE_MODEL=gpt-image-2.5-sunburst`, `ELEVENLABS_MUSIC_MODEL=music_v2_5`.
@@ -142,7 +143,7 @@ Phân hệ này chỉ đọc bài đăng từ Telegram channel đã được Adm
 
 1. Chạy cả hai migration additive `database/migrations/20261112_code_telegram.sql` và `database/migrations/20261112_code_telegram_services.sql` trên database Bot `hendydichvumang`.
 2. Thêm Bot chính làm **quản trị viên** của từng channel nguồn. Chỉ cấp quyền tối thiểu cần thiết; không cần quyền xóa bài hoặc mời thành viên.
-3. Render Environment của Telegram Bot cần `CODE_TELEGRAM_ENABLED=true` và `CODE_TELEGRAM_WORKER_ENABLED=true`. Giữ `CODE_TELEGRAM_MAX_VIDEO_BYTES=20971520` khi dùng Telegram Bot API hosted.
+3. Trong private `hendy.env`, chỉ bật `CODE_TELEGRAM_ENABLED=true`, `CODE_TELEGRAM_WORKER_ENABLED=true` sau khi migration đã được apply; đặt `COMPOSE_PROFILES=workers` để chạy worker riêng. Giữ `CODE_TELEGRAM_MAX_VIDEO_BYTES=20971520` khi dùng Telegram Bot API hosted.
 4. Mở Website Admin → **Code Telegram** → kết nối channel bằng `@username` hoặc channel ID. Mặc định mã trích từ cả tin chữ/video đều chờ Admin duyệt; chỉ Admin mới bật tự xuất bản mã chữ cho nguồn đáng tin cậy.
 
 Lưu ý: gói dịch vụ và luồng gửi username đã được tích hợp, nhưng thao tác đổi/redeem mã trên từng nhà cái vẫn cần API đối tác được ủy quyền hoặc thao tác vận hành có xác nhận của Admin. HENDY không tự đăng nhập vào tài khoản game, không lưu mật khẩu, và không tuyên bố đã nhập mã vào nhà cái khi chưa có xác nhận thành công. Không dùng user session/MTProto để vượt quyền riêng tư, không tự động tham gia kênh, và không thu thập mật khẩu, OTP đăng nhập hoặc dữ liệu cá nhân.
