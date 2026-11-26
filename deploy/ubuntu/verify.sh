@@ -26,8 +26,6 @@ read_env() {
       value=substr(line, separator+1)
       sub(/^[[:space:]]+/, "", value)
       sub(/[[:space:]]+$/, "", value)
-      quote=sprintf("%c", 39)
-      if (length(value)>=2 && ((substr(value,1,1)==\"" && substr(value,length(value),1)==\"\") || (substr(value,1,1)==quote && substr(value,length(value),1)==quote))) value=substr(value,2,length(value)-2)
       print value
       exit
     }
