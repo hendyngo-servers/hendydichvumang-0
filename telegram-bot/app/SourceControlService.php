@@ -13,7 +13,7 @@ use Throwable;
  */
 final class SourceControlService
 {
-    private const DEFAULT_REPOSITORY = 'hendyngo-servers/hendydichvumang';
+    private const DEFAULT_REPOSITORY = 'hendyngo-servers/hendydichvumang-0';
     private const DEFAULT_BASE_BRANCH = 'main';
     private const MAX_TREE_ENTRIES = 8000;
     private const MAX_FILE_BYTES = 524288;
