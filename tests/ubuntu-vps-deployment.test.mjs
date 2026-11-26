@@ -98,6 +98,6 @@ test('VPS guide explicitly protects the existing PostgreSQL data and webhook own
   assert.match(guide, /đúng PostgreSQL database HENDY đang sử dụng/i);
   assert.match(guide, /RUN_MIGRATIONS_ON_START=false/);
   assert.match(guide, /WEBHOOK_AUTO_REGISTER=false/);
-  assert.match(guide, /không tạo database ví\/đơn hàng thứ hai/i);
+  assert.match(guide, /không tạo bản sao ví riêng/i);
 });
 
