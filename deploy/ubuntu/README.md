@@ -1,160 +1,235 @@
 # HENDY trên Ubuntu 26.04 LTS (64-bit / amd64)
 
-Bộ triển khai chạy **chính mã nguồn PHP hiện có trong `telegram-bot/`**. Nó không tạo bot Node.js thứ hai, không tạo database ví riêng và không thay thế logic đơn hàng, wallet ledger, Provider Registry hoặc Supplier Readiness.
+Hướng dẫn triển khai HENDY lên Ubuntu VPS bằng Docker Compose, Caddy HTTPS và systemd. Đây là đường triển khai chính của repository.
 
-## Kiến trúc
+Ứng dụng chạy cùng mã PHP 8.3 hiện có trong telegram-bot/. Website, App Store, Mini App, Admin và API dùng chung một HTTPS hostname. Không tạo Bot Node.js thứ hai, không tạo ví/đơn hàng thứ hai.
 
-- Ubuntu 26.04 amd64: Docker Engine + Docker Compose.
-- HENDY PHP Bot/API: build từ `telegram-bot/Dockerfile` tại repository root.
-- Caddy: reverse proxy HTTPS tự động cho domain Bot/API.
-- PostgreSQL: kết nối qua `DATABASE_URL`; dùng đúng database hiện tại khi cần giữ số dư, giao dịch, đơn hàng và hồ sơ provider/supplier.
-- Website và Mini App tiếp tục dùng API contract hiện có; một file cấu hình công khai cho phép đổi API origin mà không đưa token vào trình duyệt.
+## 1. Kiến trúc triển khai
 
-Đây là phương án thay thế Bot service đang chạy trên Render. Không bật cùng lúc hai nơi tự đăng ký webhook cho cùng `BOT1_TOKEN`.
+- hendy-app: PHP 8.3 + Apache, Telegram Bot, REST API, Website và Admin.
+- caddy: HTTPS tự động, proxy công khai cổng 80/443 tới hendy-app.
+- hendy-worker: worker queue riêng, chạy bằng user www-data; chỉ chạy khi bật Compose profile workers.
+- PostgreSQL: kết nối tới database HENDY hiện tại qua DATABASE_URL (ví dụ Neon). Không tạo database local mới và không đổi database trong lần cài đặt này.
+- hendy_storage, caddy_data, caddy_config: Docker named volumes để giữ file nội bộ và chứng chỉ Caddy qua lần restart/rebuild.
 
-## 1. Chuẩn bị VPS
+Không mở trực tiếp cổng Apache 10000 ra Internet. Chỉ Caddy expose 80/443.
+
+## 2. Chuẩn bị VPS
 
 Yêu cầu:
 - Ubuntu 26.04 LTS, kiến trúc amd64.
-- Domain/subdomain riêng cho Bot API, ví dụ `bot.example.com`.
-- DNS A record (và AAAA nếu VPS dùng IPv6) trỏ về VPS.
-- Inbound TCP 80/443; UDP 443 tùy chọn cho HTTP/3.
-- SSH với quyền sudo và Git.
+- SSH với quyền sudo.
+- Một hostname công khai, ví dụ bot.example.com. Trong cấu hình một-domain, Website và API dùng cùng hostname.
+- DNS A record trỏ về IPv4 VPS. Chỉ tạo AAAA nếu IPv6 đã hoạt động và firewall cho phép.
+- Inbound TCP 22 (SSH), 80 và 443. UDP 443 là tùy chọn cho HTTP/3.
 
-Cài Git/curl và Docker:
+Nếu sử dụng UFW, cho phép SSH trước khi bật firewall:
 
-```bash
-sudo apt update
-sudo apt install -y git curl
-git clone https://github.com/hendyngo-servers/hendydichvumang.git /opt/hendydichvumang
-cd /opt/hendydichvumang
-sudo bash deploy/ubuntu/install-docker.sh
-```
+    sudo ufw allow OpenSSH
+    sudo ufw allow 80/tcp
+    sudo ufw allow 443/tcp
+    sudo ufw allow 443/udp
+    sudo ufw status
 
-Script Docker kiểm tra đúng Ubuntu 26.04 amd64, cài Docker từ repository apt chính thức và **không tự gỡ** các gói Docker/containerd cũ nếu phát hiện xung đột.
+Chỉ bật UFW sau khi đã xác nhận SSH rule phù hợp với cổng SSH thực tế của VPS.
 
-## 2. Cấu hình secrets riêng trên VPS
+## 3. Lấy mã nguồn đúng repository và cài Docker
 
-```bash
-cd /opt/hendydichvumang
-cp deploy/ubuntu/hendy.env.example deploy/ubuntu/hendy.env
-nano deploy/ubuntu/hendy.env
-chmod 600 deploy/ubuntu/hendy.env
-```
+Repository đích là hendyngo-servers/hendydichvumang-0:
 
-Bắt buộc điền:
-- `HENDY_PUBLIC_DOMAIN`: hostname Bot/API, không có `https://` hoặc path.
-- `BOT1_TOKEN`: token bot production hiện tại từ BotFather.
-- `ADMIN_ID` hoặc `ADMIN_IDS`: Telegram numeric ID quản trị.
-- `DATABASE_URL`: PostgreSQL URI của **đúng database HENDY đang sử dụng**.
+    sudo apt update
+    sudo apt install -y git curl
+    sudo mkdir -p /opt
+    sudo git clone https://github.com/hendyngo-servers/hendydichvumang-0.git /opt/hendydichvumang-0
+    cd /opt/hendydichvumang-0
+    sudo bash deploy/ubuntu/install-docker.sh
 
-Thiết lập TLS:
-- Neon hoặc PostgreSQL bên ngoài có TLS: `DATABASE_SSL=true`.
-- `ALLOWED_ORIGINS` phải liệt kê Website origin được phép gọi API, ví dụ `https://hendydichvumang-szad.onrender.com`.
-- Không đặt database URL, password hoặc credential vào Website config, Git, issue hay log.
-
-**Quan trọng về dữ liệu:** database trống sẽ không có ví và lịch sử đơn cũ. Muốn chuyển Bot từ Render sang VPS mà giữ dữ liệu, phải dùng cùng PostgreSQL database với Bot hiện tại. Không tự ý reset schema hoặc seed lại dữ liệu.
-
-Mặc định an toàn:
-- `RUN_MIGRATIONS_ON_START=false`
-- `WEBHOOK_AUTO_REGISTER=false`
-- Workers, bank callback và WebSocket tắt.
-
-## 3. Cài systemd service và khởi chạy
-
-```bash
-sudo bash deploy/ubuntu/install-service.sh
-sudo systemctl status hendy-telegram-bot
-cd /opt/hendydichvumang/deploy/ubuntu
-sudo docker compose --env-file hendy.env ps
-sudo docker compose --env-file hendy.env logs -f hendy-app
-```
-
-Caddy chỉ khởi chạy sau khi Bot/API vượt health check. Khi DNS trỏ đúng và firewall mở 80/443, Caddy tự xin và gia hạn TLS certificate; không cần cài chứng chỉ thủ công.
+Script cài Docker chỉ chạy trên Ubuntu 26.04 amd64. Nếu phát hiện các gói Docker/containerd xung đột, script dừng để người quản trị kiểm tra; nó không tự gỡ gói hiện có.
 
 Kiểm tra:
 
-```bash
-sudo bash /opt/hendydichvumang/deploy/ubuntu/verify.sh
-```
+    docker --version
+    docker compose version
+    sudo systemctl status docker
 
-Script kiểm tra `/healthz`, `/api/health` và chạy `php bin/database-doctor.php` trong container. Database doctor chỉ đọc và không xuất connection string.
+## 4. Cấu hình private environment
 
-## 4. Kết nối Website và Mini App sang VPS
+Tạo file cấu hình riêng:
 
-Mặc định Website giữ nguyên API Render hiện tại. Sau khi VPS HTTPS và PostgreSQL health đã được xác minh, sửa:
+    cd /opt/hendydichvumang-0
+    cp deploy/ubuntu/hendy.env.example deploy/ubuntu/hendy.env
+    sudo chown root:root deploy/ubuntu/hendy.env
+    sudo chmod 600 deploy/ubuntu/hendy.env
+    sudo nano deploy/ubuntu/hendy.env
 
-`website/public/assets/deployment-config.js`
+Bắt buộc cập nhật các giá trị sau:
 
-Đổi:
+- HENDY_PUBLIC_DOMAIN: hostname DNS, ví dụ bot.example.com; không có https://, port hoặc path.
+- WEBSITE_PUBLIC_URL: cùng origin, ví dụ https://bot.example.com.
+- ALLOWED_ORIGINS: origin được phép gọi API; một-domain có thể đặt https://bot.example.com.
+- BOT1_TOKEN: token production lấy từ BotFather.
+- ADMIN_ID hoặc ADMIN_IDS: Telegram numeric ID của quản trị viên.
+- DATABASE_URL: URI của đúng PostgreSQL database HENDY đang giữ users, wallet, ledger, deposits và orders.
+- DATABASE_SSL=true khi sử dụng Neon hoặc PostgreSQL bên ngoài có TLS.
 
-```js
-apiBaseUrl: ''
-```
+Không thay DATABASE_URL bằng database trống hoặc database của dự án khác nếu mục tiêu là giữ số dư và đơn hàng hiện tại. VPS app dùng lại database hiện tại; không tạo bản sao ví riêng.
 
-thành:
+Các giá trị an toàn ban đầu phải giữ:
+- RUN_MIGRATIONS_ON_START=false
+- WEBHOOK_AUTO_REGISTER=false
+- HENDY_INLINE_WORKERS=false
+- COMPOSE_PROFILES để trống
+- BANK_WEBHOOK_ENABLED=false
+- WEBSOCKET_ENABLED=false
+- AI_MEDIA_QUEUE_ENABLED=false
+- AI_COVER_ENABLED=false
+- AI_COVER_WORKER_ENABLED=false
+- MULTI_AGENT_ENABLED=false
+- VIDEO_WORKER_ENABLED=false
+- CODE_TELEGRAM_WORKER_ENABLED=false
 
-```js
-apiBaseUrl: 'https://bot.example.com'
-```
+Không đặt giá trị thật trong .env.example, Git, Website JavaScript, README, issue hoặc commit. HENDY GitHub Source Editor token và các provider API keys chỉ để trong private hendy.env khi đã thực sự cần dùng.
 
-Thay domain ví dụ bằng hostname thật trong `HENDY_PUBLIC_DOMAIN`, commit và deploy Static Site. File này chỉ chứa public HTTPS origin; không chứa Bot token, database URL hay provider API key.
+## 5. Kiểm tra file cấu hình và khởi chạy lần đầu
 
-Website, App Store và Mini App cùng đọc cấu hình này. Nếu để trống, hostname Static Site Render hiện tại dùng cấu hình API Render cũ. Đảm bảo Website origin có trong `ALLOWED_ORIGINS` của VPS.
+Cấu hình Docker Compose trước khi khởi động:
 
-## 5. Cutover webhook (chỉ thực hiện khi sẵn sàng)
+    cd /opt/hendydichvumang-0/deploy/ubuntu
+    sudo docker compose --env-file hendy.env config --quiet
 
-Telegram chỉ có một webhook active cho một bot token tại một thời điểm. Không để Render và VPS cùng khởi động với `WEBHOOK_AUTO_REGISTER=true`.
+Cài systemd service và build image:
 
-1. Giữ VPS ở `WEBHOOK_AUTO_REGISTER=false`; xác minh HTTPS, API health và đúng database.
-2. Trong Render Environment của Bot service, đặt `WEBHOOK_AUTO_REGISTER=false`, sau đó deploy/restart Render để cấu hình mới có hiệu lực. Webhook cũ vẫn có thể hoạt động ở Render trong giai đoạn này, nhưng Render không tự đăng ký lại webhook ở lần restart tiếp theo.
-3. Trên VPS, đổi `WEBHOOK_AUTO_REGISTER=true` trong `deploy/ubuntu/hendy.env`, rồi chạy:
+    sudo bash /opt/hendydichvumang-0/deploy/ubuntu/install-service.sh
 
-   ```bash
-   sudo systemctl restart hendy-telegram-bot
-   cd /opt/hendydichvumang/deploy/ubuntu
-   sudo docker compose --env-file hendy.env exec -T hendy-app php bin/register-webhook.php
-   ```
+Kiểm tra trạng thái:
 
-   Ứng dụng gọi Telegram `getMe`, đặt webhook vào domain VPS và kiểm tra `getWebhookInfo`.
-4. Gửi `/start`, kiểm tra ví, lịch sử, danh sách đơn và API Website. Chỉ dừng Render Bot sau khi xác nhận VPS đang nhận update; Static Site Render vẫn hoạt động độc lập.
-5. Chuyển `apiBaseUrl` trong `deployment-config.js` sang domain VPS và deploy Website nếu chưa thực hiện.
+    sudo systemctl status hendy-telegram-bot
+    sudo docker compose --env-file hendy.env ps
+    sudo docker compose --env-file hendy.env logs --tail=200 hendy-app caddy
 
-**Rollback:** đặt `WEBHOOK_AUTO_REGISTER=false` trên VPS và restart; sau đó bật `WEBHOOK_AUTO_REGISTER=true` cho Render Bot và deploy/restart Render để Bot cũ đăng ký lại webhook. Tránh hai bên cùng true.
+Caddy chỉ nhận traffic sau khi hendy-app vượt health check. Khi DNS trỏ đúng VPS và firewall mở 80/443, Caddy tự xin/gia hạn chứng chỉ TLS. Không cần chép private key/chứng chỉ vào repository.
 
-## 6. Cập nhật mã nguồn
+Kiểm tra ứng dụng:
 
-Sau khi PR được merge vào `main`:
+    sudo bash /opt/hendydichvumang-0/deploy/ubuntu/verify.sh
 
-```bash
-sudo bash /opt/hendydichvumang/deploy/ubuntu/update.sh
-```
+Verification kiểm tra HTTPS, Website homepage, App Store, Mini App, API health và chạy database-doctor.php ở chế độ read-only. Doctor không in DATABASE_URL hoặc secret.
 
-Script chỉ cập nhật code và rebuild container; không chạy migration production. Log:
+Sau kiểm tra, truy cập:
+- https://bot.example.com/
+- https://bot.example.com/app-store/
+- https://bot.example.com/miniapp/
+- https://bot.example.com/admin
+- https://bot.example.com/healthz
 
-```bash
-sudo journalctl -u hendy-telegram-bot -f
-cd /opt/hendydichvumang/deploy/ubuntu
-sudo docker compose --env-file hendy.env logs -f hendy-app caddy
-```
+Thay bot.example.com bằng hostname đã cấu hình thật.
 
-## 7. Provider Registry và Supplier Readiness
+## 6. Worker nền (tùy chọn, mặc định tắt)
 
-Các chức năng này đã nằm trong mã nguồn hiện tại:
-- Provider Registry quản lý metadata và **tên biến Environment**, không lưu credential value trong PostgreSQL.
-- Supplier Readiness khóa bán hàng cho tới khi quyền nguồn được xác nhận, supplier access đã xác minh, hồ sơ HTTPS đầy đủ, còn hàng và fulfillment manual.
-- Adapter API tổng quát chưa được coi là tích hợp production.
+Ubuntu tách worker khỏi tiến trình Web/API. Worker container chạy bằng user www-data, chia sẻ volume storage có kiểm soát và chỉ được bật qua Compose profile.
 
-Chuyển runtime sang Ubuntu không tự động áp migration. Giữ `RUN_MIGRATIONS_ON_START=false` và làm theo:
-- `docs/provider-service-registry.md`
-- `docs/product-provider-onboarding.md`
-- `docs/PRODUCTION-MIGRATION-RUNBOOK.md`
+Chỉ bật worker sau khi:
+1. Migration cần thiết đã được duyệt và áp dụng vào đúng database.
+2. Provider API key/callback secret được cấu hình trong private hendy.env.
+3. Module tương ứng được bật trong Admin và đã qua kiểm tra.
+4. Đã xác nhận worker thực sự cần chạy trên VPS.
 
-Chỉ migration sau khi xác nhận đúng database/role, tạo restore point và dùng direct owner/migration URL theo runbook. Không thay đổi wallet, order, ledger hoặc người dùng để triển khai Bot.
+Ví dụ bật Multi-Agent:
+- Đặt COMPOSE_PROFILES=workers.
+- Đặt MULTI_AGENT_ENABLED=true.
+- Cấu hình OPENAI_API_KEY.
+- Xác nhận migration 20261120_multi_agent_control_center.sql đã được áp dụng.
 
-## Bảo mật
+Sau khi thay đổi hendy.env:
 
-- Không commit `hendy.env`; tệp được loại khỏi Git bởi `.gitignore` riêng.
-- Chỉ quản trị viên VPS được đọc file này; dùng `chmod 600`.
-- Không bật bank webhook, workers, Provider API adapter hoặc fulfillment tự động nếu chưa có integration chuyên biệt và kiểm thử.
-- Không chạy reset schema hay migration production tùy tiện.
+    sudo chmod 600 /opt/hendydichvumang-0/deploy/ubuntu/hendy.env
+    sudo systemctl restart hendy-telegram-bot
+    sudo docker compose --env-file /opt/hendydichvumang-0/deploy/ubuntu/hendy.env logs -f hendy-worker
+
+Worker startup chạy preflight cho Multi-Agent và dừng nếu thiếu migration/provider key. Các worker AI Media, Video, Code Telegram và AI Cover cũng có điều kiện kiểm tra riêng. Không bật tất cả chỉ để thử nghiệm.
+
+## 7. Migration production an toàn
+
+Không tự động migration khi khởi động VPS. Chỉ chạy khi đã có restore point/backup và xác minh đúng database.
+
+Trước tiên, kiểm tra database đang được runtime sử dụng:
+
+    cd /opt/hendydichvumang-0/deploy/ubuntu
+    sudo docker compose --env-file hendy.env exec -T hendy-app php bin/database-doctor.php
+
+Ghi lại database name, role, host, direct/pooled và migration inventory. Không suy luận tên database từ Neon project slug.
+
+Để chạy migration:
+1. Tạo/kiểm tra restore point trên Neon hoặc backup tương đương.
+2. Lấy direct/unpooled owner/migration URL của đúng database.
+3. Trong SSH shell, nhập URL không echo và chỉ truyền vào một container chạy một lần:
+
+    read -r -s -p "Neon direct owner URL: " MIGRATION_DATABASE_URL
+    printf '\n'
+    export MIGRATION_DATABASE_URL
+    cd /opt/hendydichvumang-0/deploy/ubuntu
+    sudo --preserve-env=MIGRATION_DATABASE_URL docker compose --env-file hendy.env run --rm -e MIGRATION_DATABASE_URL hendy-app php bin/migrate.php
+
+Lệnh trên là dry-run; không áp schema. Kiểm tra database name, role, host và toàn bộ pending migrations. Migration runner có thể áp dụng tất cả migration còn pending theo thứ tự; không giả định chỉ chạy một file.
+
+Chỉ khi xác nhận exact database, role, restore point và danh sách migration mới apply với tên database lấy từ doctor:
+
+    sudo --preserve-env=MIGRATION_DATABASE_URL docker compose --env-file hendy.env run --rm -e MIGRATION_DATABASE_URL hendy-app php bin/migrate.php --apply --expect-database=TEN_DATABASE_DA_XAC_NHAN
+
+Thay TEN_DATABASE_DA_XAC_NHAN bằng chính xác database name. Sau đó chạy database-doctor.php lần nữa và xác nhận pending=0, checksum mismatch=0. Kết thúc shell bằng:
+
+    unset MIGRATION_DATABASE_URL
+
+Không đưa owner URL vào hendy.env, Git hoặc log. Không reset schema, không seed lại ví và không xóa users/orders/ledger.
+
+## 8. Chuyển webhook Telegram (chỉ khi VPS đã sẵn sàng)
+
+Telegram chỉ có một webhook active cho một token tại một thời điểm.
+
+1. Giữ WEBHOOK_AUTO_REGISTER=false trên VPS trong suốt giai đoạn cài đặt/kiểm tra.
+2. Nếu cùng BOT1_TOKEN đang chạy trên backend cũ, đảm bảo backend cũ không tự đăng ký lại webhook sau khi cutover. Không để hai nơi đồng thời tự đăng ký.
+3. Sau khi VPS qua verify, database đúng, HTTPS tốt và /start được kiểm tra, đổi WEBHOOK_AUTO_REGISTER=true trong private hendy.env.
+4. Chạy sudo systemctl restart hendy-telegram-bot. Container startup sẽ gọi getMe/setWebhook và xác minh getWebhookInfo.
+5. Có thể kiểm tra lại bằng lệnh php bin/register-webhook.php từ hendy-app; lệnh này thực hiện setWebhook và verify, vì vậy chỉ chạy khi chủ động xác nhận muốn VPS sở hữu webhook.
+6. Gửi /start, kiểm tra hồ sơ, ví, lịch sử giao dịch, đơn hàng, ticket và API Website trước khi dừng backend cũ.
+
+Rollback webhook: đặt WEBHOOK_AUTO_REGISTER=false trên VPS và restart. Chỉ sau đó bật đăng ký webhook ở backend cũ. Không để hai máy cùng tự đăng ký.
+
+## 9. Cập nhật và rollback mã nguồn
+
+Sau khi PR đã được review/merge vào main, cập nhật trên VPS:
+
+    sudo bash /opt/hendydichvumang-0/deploy/ubuntu/update.sh
+
+Script kiểm tra working tree sạch, fetch main, chỉ fast-forward, build image rồi chờ health check. Nếu build/health check mới thất bại, script trả Git checkout về commit trước và dựng lại image trước. Script không chạy migration.
+
+Xem các commit để chọn rollback target:
+
+    git -C /opt/hendydichvumang-0 log --oneline -10
+
+Rollback bằng commit SHA đầy đủ 40 ký tự:
+
+    sudo bash /opt/hendydichvumang-0/deploy/ubuntu/rollback.sh COMMIT_SHA_40_KY_TU
+
+Rollback source code không tự rollback PostgreSQL schema/data. Migration rollback phải theo kế hoạch database riêng và có restore point.
+
+## 10. Logs và vận hành
+
+    sudo systemctl status hendy-telegram-bot
+    sudo journalctl -u hendy-telegram-bot -f
+    cd /opt/hendydichvumang-0/deploy/ubuntu
+    sudo docker compose --env-file hendy.env ps
+    sudo docker compose --env-file hendy.env logs -f hendy-app caddy
+    sudo docker compose --env-file hendy.env logs -f hendy-worker
+
+Docker json logs được giới hạn dung lượng/tệp trong Compose. Named volumes giữ storage và Caddy cert qua rebuild. Không xóa volume bằng docker compose down -v hoặc docker volume prune nếu chưa có backup và xác nhận nội dung.
+
+## 11. Ranh giới triển khai
+
+- Ubuntu VPS là nơi chạy Website + Bot/API + Admin; PostgreSQL vẫn là database hiện hữu (Neon hoặc PostgreSQL endpoint đã được xác minh), không tạo database ví thứ hai.
+- Render Blueprint được giữ làm legacy reference/fallback, không dùng làm đích deploy chính trong hướng dẫn này.
+- Provider Registry lưu metadata/tên biến ENV, không lưu secret value.
+- Supplier Readiness vẫn khóa bán hàng nếu quyền nguồn, supplier access, evidence và stock chưa đạt.
+- Adapter API tổng quát không đồng nghĩa đã tích hợp production.
+- Bank callback, fulfillment tự động, AI workers, Code Telegram workers và WebSocket giữ tắt cho tới khi có credential, migration, callback verification và test riêng.
+- Không chạy migration hoặc chuyển webhook chỉ vì GitHub CI xanh.
