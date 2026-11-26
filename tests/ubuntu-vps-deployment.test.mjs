@@ -15,6 +15,7 @@ const updater = readFileSync('deploy/ubuntu/update.sh', 'utf8');
 const rollback = readFileSync('deploy/ubuntu/rollback.sh', 'utf8');
 const guide = readFileSync('deploy/ubuntu/README.md', 'utf8');
 const envSchema = JSON.parse(readFileSync('telegram-bot/config/env.schema.json', 'utf8'));
+const adminHtml = readFileSync('website/telegram/admin-dashboard/index.html', 'utf8');
 
 test('Ubuntu Compose serves a single-origin application and does not publish Apache directly', () => {
   assert.match(compose, /hendy-app:/);
@@ -75,6 +76,10 @@ test('PHP serves local Website assets on the same VPS origin without a redirect 
   assert.match(appEntry, /\$reservedPrefixes/);
   assert.match(appEntry, /str_contains\(\$relativePath, "\\0"\)/);
   assert.match(appEntry, /websiteUrl/);
+  assert.match(appEntry, /styles\/buttons\.css/);
+  assert.match(adminHtml, /href=\"\/styles\/buttons\.css\"/);
+  assert.match(adminHtml, /github\.com\/hendyngo-servers\/hendydichvumang-0\/commit\//);
+  assert.doesNotMatch(adminHtml, /github\.com\/hendyngo-servers\/hendydichvumang\/commit\//);
 });
 
 test('systemd and operator scripts use the target repository and safe update/rollback paths', () => {
