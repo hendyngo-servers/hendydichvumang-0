@@ -57,7 +57,7 @@ final class SourceControlService
                 'connected' => false,
                 'repository' => $config['repository'],
                 'baseBranch' => $config['baseBranch'],
-                'message' => 'Chưa cấu hình HENDY_GITHUB_TOKEN trong Render Environment. Trình biên tập đang ở chế độ chưa kết nối.',
+                'message' => 'Chưa cấu hình HENDY_GITHUB_TOKEN trong private VPS environment file. Trình biên tập đang ở chế độ chưa kết nối.',
                 'permissionsRequired' => ['Metadata: read', 'Contents: read/write'],
             ];
         }
@@ -375,7 +375,7 @@ final class SourceControlService
             $totalBytes += $bytes;
             if ($totalBytes > self::MAX_BATCH_BYTES) throw new RuntimeException('Tổng nội dung gửi lên vượt giới hạn 2 MB cho mỗi lần ghi.');
             if (self::containsSecret($fileContent)) {
-                throw new RuntimeException('Phát hiện mẫu private key/token trong ' . $path . '. Hãy đưa credential vào Render Environment, không đưa vào mã nguồn.');
+                throw new RuntimeException('Phát hiện mẫu private key/token trong ' . $path . '. Hãy đưa credential vào private VPS environment file, không đưa vào mã nguồn.');
             }
             $normalized[] = [
                 'path' => $path,
@@ -538,7 +538,7 @@ final class SourceControlService
     private static function requireConfigured(array $config): void
     {
         if ($config['token'] === '') {
-            throw new RuntimeException('Trình quản lý mã nguồn chưa kết nối. Hãy cấu hình HENDY_GITHUB_TOKEN trong Render Environment.');
+            throw new RuntimeException('Trình quản lý mã nguồn chưa kết nối. Hãy cấu hình HENDY_GITHUB_TOKEN trong private VPS environment file.');
         }
     }
 
