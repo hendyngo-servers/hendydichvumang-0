@@ -90,9 +90,9 @@ jobs:
           cp deploy/ubuntu/hendy.env.example deploy/ubuntu/hendy.env
           docker compose --env-file deploy/ubuntu/hendy.env -f deploy/ubuntu/compose.yaml config --quiet
           COMPOSE_PROFILES=workers docker compose --env-file deploy/ubuntu/hendy.env -f deploy/ubuntu/compose.yaml config --quiet
+          rm deploy/ubuntu/hendy.env
       - name: Build the production Ubuntu Bot/API image
         run: docker build --pull --file telegram-bot/Dockerfile --tag hendy-ubuntu-ci .
-          rm deploy/ubuntu/hendy.env
   neon-runtime:
     name: Neon Function build and tests
     runs-on: ubuntu-latest
