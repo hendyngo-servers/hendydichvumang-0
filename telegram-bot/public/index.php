@@ -203,7 +203,7 @@ try {
         if (!$isReserved) {
             $websiteRoot = realpath(dirname(__DIR__, 2) . '/website/public');
             $relativePath = rawurldecode($path === '/' ? '/index.html' : $path);
-            $unsafePath = str_contains($relativePath, "\\0") || str_contains($relativePath, '\\\\')
+            $unsafePath = str_contains($relativePath, "\0") || str_contains($relativePath, '\\')
                 || str_starts_with($relativePath, '//');
             foreach (explode('/', $relativePath) as $segment) {
                 if ($segment === '.' || $segment === '..') {
