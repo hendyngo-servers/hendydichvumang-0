@@ -76,6 +76,14 @@ jobs:
           bash -n deploy/ubuntu/install-service.sh
           bash -n deploy/ubuntu/update.sh
           bash -n deploy/ubuntu/verify.sh
+          bash -n deploy/ubuntu/rollback.sh
+          bash -n telegram-bot/docker/start.sh
+          bash -n telegram-bot/docker/worker.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test Ubuntu VPS topology and safety defaults
+        run: node --test tests/ubuntu-vps-deployment.test.mjs
       - name: Validate Docker Compose model
         run: |
           docker compose version
