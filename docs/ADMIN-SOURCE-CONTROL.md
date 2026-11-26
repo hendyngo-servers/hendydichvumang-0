@@ -6,10 +6,10 @@ writes directly into the deployed container or the default branch.
 
 ## Configure the connection
 
-Set these variables on the Render service **hendydichvumang-telegram-bot**:
+Set these variables in the Bot runtime environment (on Ubuntu VPS, use `deploy/ubuntu/hendy.env`; do not commit the real file):
 
 - `HENDY_GITHUB_TOKEN`: a fine-grained GitHub personal access token.
-- `HENDY_SOURCE_CONTROL_REPOSITORY`: `hendyngo-servers/hendydichvumang`.
+- `HENDY_SOURCE_CONTROL_REPOSITORY`: `hendyngo-servers/hendydichvumang-0`.
 - `HENDY_SOURCE_CONTROL_BASE_BRANCH`: `main`.
 
 The token is read only by the PHP backend. It is not returned by any API,
@@ -62,13 +62,11 @@ large generated files.
   automatic merge, direct push to the base branch, Render deploy trigger or
   database migration action.
 - commit trực tiếp vào mains still require normal GitHub review and branch-protection rules.
-  A PR is not a production deployment; the deployed Render service changes
-  only after the repository's normal merge/deploy path completes.
+  A PR is not a production deployment; the VPS changes only after the approved merge and an operator-triggered update.
 
 ## Troubleshooting
 
-- **Not connected:** confirm HENDY_GITHUB_TOKEN is present on the Bot Render
-  service and redeploy the service so PHP reads the new environment.
+- **Not connected:** confirm HENDY_GITHUB_TOKEN is present in the Bot runtime environment and restart the service so PHP reads the new environment.
 - **401/403:** verify token expiry, repository selection and the three minimum
   repository permission groups above.
 - **404:** verify repository owner/name and base branch; the token may not have
