@@ -42,9 +42,7 @@ jobs:
       - name: Replace target working tree while preserving target Git history
         run: |
           set -euo pipefail
-          rsync -a --delete --exclude='.git/' "$RUNNER_TEMP/hendy-source/" "$GITHUB_WORKSPACE/"
-          test ! -e .github/workflows/_bootstrap-full-hendy.yml
-          test -f .github/workflows/hendy-monorepo-ci.yml
+          rsync -a --delete --exclude='.git/' --exclude='.github/' "$RUNNER_TEMP/hendy-source/" "$GITHUB_WORKSPACE/"
           test -f telegram-bot/database/schema.sql
           test -f telegram-bot/database/migrations/20261120_multi_agent_control_center.sql
           test -f deploy/ubuntu/hendy.env.example
