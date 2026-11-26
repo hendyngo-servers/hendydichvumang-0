@@ -31,7 +31,7 @@ Không có token, mật khẩu database hoặc khóa signing thật trong source
 | Video callback | `/webhook/video` |
 | Bank callback (mặc định khóa) | `/webhook/bank` |
 
-Trang chủ công khai dùng `apps/website/landing.html` với CSS/JS tự host trong `public/assets/`. Trung tâm khách hàng dùng `apps/website/index.html`; Admin dùng `apps/admin-dashboard/index.html`. Trang `apps/admin-dashboard/legacy-login.html` là trang trao đổi vé đăng nhập website một lần, vẫn được route `/legacy-login` sử dụng.
+Trang chủ công khai dùng `website/public/index.html` và CSS/JS tự host trong `website/public/assets/`. App Store nằm trong `website/public/app-store/`; Mini App nằm trong `website/public/miniapp/`; Admin dùng `website/telegram/admin-dashboard/index.html`. Trang `website/telegram/admin-dashboard/legacy-login.html` là trang trao đổi vé đăng nhập website một lần, vẫn được route `/legacy-login` sử dụng.
 
 ## Cấu hình
 
@@ -47,7 +47,7 @@ Các biến production quan trọng cấu hình trong private file `deploy/ubunt
 - `BANK_WEBHOOK_ENABLED=false` cho đến khi có adapter kiểm tra chữ ký theo ngân hàng.
 - `NEON_STORAGE_FUNCTION_URL` và `NEON_STORAGE_FUNCTION_KEY` chỉ đặt nếu bật Object Storage.
 
-Runtime chỉ chấp nhận khóa bot `primary`, chỉ đọc `BOT1_TOKEN`, chỉ đăng ký webhook `/webhook/telegram`; các biến Bot thứ hai cũ nếu còn tồn tại trong Render sẽ không được sử dụng. Không đưa token Bot hoặc secret vào URL, HTML, JavaScript, log hoặc commit.
+Runtime chỉ chấp nhận khóa bot `primary`, chỉ đọc `BOT1_TOKEN`, chỉ đăng ký webhook `/webhook/telegram`; các biến Bot thứ hai cũ nếu còn tồn tại trong private environment file sẽ không được sử dụng. Không đưa token Bot hoặc secret vào URL, HTML, JavaScript, log hoặc commit.
 
 Liên kết Bot công khai được lấy từ Telegram `getMe()` trong bước đăng ký webhook và lưu trong `app_settings`. Không cần chép username Bot thủ công.
 
@@ -114,13 +114,14 @@ Hai mục menu **TẠO ÂM NHẠC AI** và **CHỈNH SỬA ẢNH AI** dùng hàn
 - Chỉnh ảnh: OpenAI Images Edit API, mặc định model `gpt-image-2.5-sunburst`; thành viên gửi ảnh rồi mô tả chỉnh sửa.
 - Giới hạn mặc định: tối đa 1 tác vụ đang chạy và 3 tác vụ mỗi tài khoản trong ngày Việt Nam. Không trừ ví trong bản thử nghiệm này.
 - Tệp ảnh đầu vào chỉ được tải về tạm thời từ Telegram, kiểm tra loại ảnh/kích thước rồi xóa sau khi xử lý. Tệp kết quả cũng được xóa sau khi gửi.
-- Bảng `ai_media_jobs` là migration bổ sung; không tự tạo bảng ở runtime. Worker chỉ chạy khi `AI_MEDIA_QUEUE_ENABLED=true`, migration đã được áp dụng và API key tương ứng đã có.
+- Bảng `ai_media_jobs` là migration bổ sung; không tự tạo bảng ở runtime. Worker chỉ chạy khi `AI_MEDIA_QUEUE_ENABLED=true`, migration đã được áp dụng, API key tương ứng đã có và `COMPOSE_PROFILES=workers` bật dedicated worker container.
 
 Cấu hình các biến trong private `deploy/ubuntu/hendy.env` trên VPS:
 - `AI_MEDIA_QUEUE_ENABLED=false` (chỉ bật sau migration và khi đã cấu hình provider).
 - `OPENAI_API_KEY`, `ELEVENLABS_API_KEY`: secrets; không commit và không nhập qua Telegram.
 - `OPENAI_IMAGE_MODEL=gpt-image-2.5-sunburst`, `ELEVENLABS_MUSIC_MODEL=music_v2_5`.
 - `AI_MEDIA_MAX_PER_DAY=3`, `AI_MEDIA_WORKER_POLL_SECONDS=5`.
+- `COMPOSE_PROFILES=workers` để bật container worker riêng sau khi đã cấu hình các điều kiện ở trên.
 
 Music API của ElevenLabs yêu cầu tài khoản có quyền API phù hợp; việc tạo media có thể phát sinh chi phí tại nhà cung cấp. HENDY không tự khấu trừ ví thành viên trong luồng thử nghiệm.
 
@@ -141,9 +142,9 @@ Phân hệ này chỉ đọc bài đăng từ Telegram channel đã được Adm
 
 ### Migration và kết nối kênh
 
-1. Chạy cả hai migration additive `database/migrations/20261112_code_telegram.sql` và `database/migrations/20261112_code_telegram_services.sql` trên database Bot `hendydichvumang`.
+1. Chạy cả hai migration additive `telegram-bot/database/migrations/20261112_code_telegram.sql` và `telegram-bot/database/migrations/20261112_code_telegram_services.sql` trên đúng PostgreSQL database đã xác nhận bằng `database-doctor.php`; xem runbook migration Ubuntu VPS.
 2. Thêm Bot chính làm **quản trị viên** của từng channel nguồn. Chỉ cấp quyền tối thiểu cần thiết; không cần quyền xóa bài hoặc mời thành viên.
-3. Trong private `hendy.env`, chỉ bật `CODE_TELEGRAM_ENABLED=true`, `CODE_TELEGRAM_WORKER_ENABLED=true` sau khi migration đã được apply; đặt `COMPOSE_PROFILES=workers` để chạy worker riêng. Giữ `CODE_TELEGRAM_MAX_VIDEO_BYTES=20971520` khi dùng Telegram Bot API hosted.
+3. Trong private `deploy/ubuntu/hendy.env`, chỉ bật `CODE_TELEGRAM_ENABLED=true`, `CODE_TELEGRAM_WORKER_ENABLED=true` sau khi migration đã được apply; đặt `COMPOSE_PROFILES=workers` để chạy worker riêng. Giữ `CODE_TELEGRAM_MAX_VIDEO_BYTES=20971520` khi dùng Telegram Bot API hosted.
 4. Mở Website Admin → **Code Telegram** → kết nối channel bằng `@username` hoặc channel ID. Mặc định mã trích từ cả tin chữ/video đều chờ Admin duyệt; chỉ Admin mới bật tự xuất bản mã chữ cho nguồn đáng tin cậy.
 
 Lưu ý: gói dịch vụ và luồng gửi username đã được tích hợp, nhưng thao tác đổi/redeem mã trên từng nhà cái vẫn cần API đối tác được ủy quyền hoặc thao tác vận hành có xác nhận của Admin. HENDY không tự đăng nhập vào tài khoản game, không lưu mật khẩu, và không tuyên bố đã nhập mã vào nhà cái khi chưa có xác nhận thành công. Không dùng user session/MTProto để vượt quyền riêng tư, không tự động tham gia kênh, và không thu thập mật khẩu, OTP đăng nhập hoặc dữ liệu cá nhân.
@@ -151,4 +152,4 @@ Lưu ý: gói dịch vụ và luồng gửi username đã được tích hợp, 
 
 ## Multi-Agent Control Center
 
-The Admin Dashboard provides a PostgreSQL-backed Agent registry and Hub. Tasks flow through specialist agents and the final output waits for Admin approval. See ../docs/MULTI-AGENT-CONTROL-CENTER.md before enabling the worker.
+The Admin Dashboard provides a PostgreSQL-backed Agent registry and Hub. Tasks flow through specialist agents and the final output waits for Admin approval. See `../docs/MULTI-AGENT-CONTROL-CENTER.md` before enabling the worker. After the migration and OPENAI_API_KEY are ready, set `MULTI_AGENT_ENABLED=true` and `COMPOSE_PROFILES=workers` in private `deploy/ubuntu/hendy.env`.
