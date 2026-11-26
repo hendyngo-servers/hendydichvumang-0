@@ -1,4 +1,11 @@
 name: hendy
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   hendy-app:
     build:
@@ -6,13 +13,15 @@ services:
       dockerfile: telegram-bot/Dockerfile
     image: hendy-telegram-bot:ubuntu
     restart: unless-stopped
+    init: true
     env_file:
       - ./hendy.env
     environment:
       PORT: "10000"
-      APP_URL: "https://${HENDY_PUBLIC_DOMAIN}"
-      WEBSITE_PUBLIC_URL: "${WEBSITE_PUBLIC_URL:-https://hendydichvumang-szad.onrender.com}"
-      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-https://hendydichvumang-szad.onrender.com}"
+      APP_URL: "https://${HENDY_PUBLIC_DOMAIN:?Set HENDY_PUBLIC_DOMAIN in hendy.env}"
+      WEBSITE_PUBLIC_URL: "${WEBSITE_PUBLIC_URL:?Set WEBSITE_PUBLIC_URL in hendy.env}"
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:?Set ALLOWED_ORIGINS in hendy.env}"
+      HENDY_INLINE_WORKERS: "false"
     expose:
       - "10000"
     volumes:
@@ -27,11 +36,42 @@ services:
       timeout: 10s
       retries: 3
       start_period: 120s
+    stop_grace_period: 30s
+    logging: *default-logging
     networks:
       - hendy
+
+  # Start only after the owner enables one or more worker flags and sets
+  # COMPOSE_PROFILES=workers in the private hendy.env file.
+  hendy-worker:
+    image: hendy-telegram-bot:ubuntu
+    profiles: ["workers"]
+    command: ["/var/www/app/docker/worker.sh"]
+    user: "www-data"
+    restart: "on-failure:5"
+    init: true
+    env_file:
+      - ./hendy.env
+    environment:
+      PORT: "10000"
+      APP_URL: "https://${HENDY_PUBLIC_DOMAIN:?Set HENDY_PUBLIC_DOMAIN in hendy.env}"
+      WEBSITE_PUBLIC_URL: "${WEBSITE_PUBLIC_URL:?Set WEBSITE_PUBLIC_URL in hendy.env}"
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:?Set ALLOWED_ORIGINS in hendy.env}"
+      HENDY_INLINE_WORKERS: "false"
+    volumes:
+      - hendy_storage:/var/www/app/storage
+    depends_on:
+      hendy-app:
+        condition: service_healthy
+    stop_grace_period: 30s
+    logging: *default-logging
+    networks:
+      - hendy
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    init: true
     environment:
       HENDY_PUBLIC_DOMAIN: "${HENDY_PUBLIC_DOMAIN:?Set HENDY_PUBLIC_DOMAIN in hendy.env}"
     ports:
@@ -45,10 +85,13 @@ services:
     depends_on:
       hendy-app:
         condition: service_healthy
+    logging: *default-logging
     networks:
       - hendy
+
 networks:
   hendy:
+
 volumes:
   hendy_storage:
   caddy_data:
