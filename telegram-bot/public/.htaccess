@@ -6,7 +6,7 @@ RewriteEngine On
     Require all denied
 </FilesMatch>
 
-# Security headers. TLS is terminated by Render in production.
+# Security headers. TLS may be terminated by Caddy (Ubuntu VPS) or the hosting edge.
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
