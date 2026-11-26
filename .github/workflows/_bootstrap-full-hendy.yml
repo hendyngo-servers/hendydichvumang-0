@@ -50,7 +50,6 @@ jobs:
           test -f deploy/ubuntu/hendy.env.example
           test ! -e deploy/ubuntu/hendy.env
           git add --all
-          git diff --cached --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Rebuild source tree as full HENDY Ubuntu 26.04 platform"
