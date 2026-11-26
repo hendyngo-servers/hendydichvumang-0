@@ -21,7 +21,7 @@ php bin/validate-config.php
 php bin/wait-for-database.php
 if [[ "${RUN_MIGRATIONS_ON_START:-false}" == "true" ]]; then
     # Production never runs DDL migrations during normal service startup.
-    # Use a one-off one-off server shell with a direct Neon owner/migration URL instead.
+    # Use a one-off server shell with a direct Neon owner/migration URL instead.
     case "${APP_ENV:-production}" in
         local|development|test)
             ;;
