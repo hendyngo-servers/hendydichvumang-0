@@ -27,7 +27,7 @@ RUN composer lint
 COPY telegram-bot/docker/apache-vhost.conf /etc/apache2/sites-available/000-default.conf
 RUN chown -R www-data:www-data /var/www/app /var/www/website \
     && chmod -R 755 /var/www/app/public \
-    && chmod +x /var/www/app/docker/start.sh
+    && chmod +x /var/www/app/docker/start.sh /var/www/app/docker/worker.sh
 
 EXPOSE 10000
 CMD ["/var/www/app/docker/start.sh"]
