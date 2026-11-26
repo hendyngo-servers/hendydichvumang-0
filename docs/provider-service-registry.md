@@ -31,7 +31,7 @@ worker's own safety gate.
 
 The database stores provider metadata only. The `credential_env_key` column contains
 a variable name such as `OTP_PROVIDER_API_KEY`, never the value. Secret values must
-be set in Render Environment and must not be pasted into provider notes, endpoint URLs,
+be set in the private Ubuntu VPS environment file deploy/ubuntu/hendy.env and must not be pasted into provider notes,
 chat messages, issues or committed files.
 
 Provider endpoints must use HTTPS, cannot contain user/password information, query
@@ -93,8 +93,8 @@ repository name, a previous database inspection or an example in this document.
    SELECT/INSERT/UPDATE/DELETE on both tables plus sequence usage. Then deploy the
    Bot code and open `/admin` → **Provider & Service Registry**.
 
-If the actual Render database name differs from a previously inspected Neon database,
-stop and use the name shown by Render-connected `database-doctor.php`. Never apply
+If the actual PostgreSQL database name differs from a previously inspected Neon database,
+stop and use the name shown by the VPS-connected `database-doctor.php`. Never apply
 these changes to an assumed database.
 
 The Provider Registry migration only creates new tables/indexes, seeds missing
@@ -121,7 +121,7 @@ only; it never returns secret values.
 ## Activation checklist
 
 Before opening any new service to members, confirm supplier identity and resale rights,
-record HTTPS evidence, agree stock/SLA/refunds, configure secrets in Render, implement
+record HTTPS evidence, agree stock/SLA/refunds, configure secrets in the private VPS environment file, implement
 or select a reviewed adapter, run sandbox tests, and then enable the relevant existing
 module switch. For manual products, both source permission and supplier access must
 also pass the product readiness gate. A green CI run or a local configuration check is
