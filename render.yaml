@@ -1,68 +1,67 @@
-envVarGroups:
-  - name: hendy-multi-agent-shared
-    envVars:
-      - key: ADMIN_USERNAME
-        value: admin
-      - key: ADMIN_PASSWORD_SALT
-        generateValue: true
-      - key: SESSION_SECRET
-        generateValue: true
-      - key: OPENAI_MODEL
-        value: gpt-6.2-astra
-      - key: OPENAI_BASE_URL
-        value: https://api.openai.com/v1
-      - key: PGSSLMODE
-        value: require
-      - key: PG_POOL_MAX
-        value: "5"
-      - key: SESSION_TTL_HOURS
-        value: "12"
-      - key: MULTI_AGENT_ENABLED
-        value: "false"
-      - key: MULTI_AGENT_WORKER_POLL_SECONDS
-        value: "5"
-      - key: MULTI_AGENT_MAX_ATTEMPTS
-        value: "3"
-      - key: MULTI_AGENT_STALE_MINUTES
-        value: "15"
-      - key: MULTI_AGENT_CONCURRENCY
-        value: "1"
-      - key: NODE_ENV
-        value: production
-
+# HENDY production: one public Static Site and one primary Telegram Bot.
+# The clean base onrender.com hostname still routes to the legacy Bot endpoint; -szad is the verified Static Site host.
+# Secrets (BOT1_TOKEN, ADMIN_ID, DATABASE_URL, HOMEPROXY_ENCRYPTION_KEY and provider credentials) stay in Render Environment.
 services:
   - type: web
-    name: hendy-multi-agent-api
+    name: hendydichvumang
+    runtime: static
+    branch: main
+    buildCommand: echo "HENDY Static Site - no build step"
+    staticPublishPath: ./website/public
+    autoDeployTrigger: checksPass
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Permissions-Policy
+        value: "camera=(), microphone=(), geolocation=()"
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+
+  - type: web
+    name: hendydichvumang-telegram-bot
     runtime: docker
+    plan: free
     region: singapore
-    dockerfilePath: ./Dockerfile
+    branch: main
+    dockerfilePath: ./telegram-bot/Dockerfile
     dockerContext: .
     healthCheckPath: /healthz
+    autoDeployTrigger: checksPass
     envVars:
-      - fromGroup: hendy-multi-agent-shared
-      - key: DATABASE_URL
-        sync: false
-      - key: ADMIN_PASSWORD
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
+      - key: APP_ENV
+        value: production
+      - key: WEBSITE_PUBLIC_URL
+        value: https://hendydichvumang-szad.onrender.com
+      - key: ALLOWED_ORIGINS
+        value: https://hendydichvumang-szad.onrender.com
       - key: PORT
         value: "10000"
-
-  - type: worker
-    name: hendy-multi-agent-worker
-    runtime: docker
-    region: singapore
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    dockerCommand: npm run worker
-    envVars:
-      - fromGroup: hendy-multi-agent-shared
-      - key: DATABASE_URL
+      - key: RUN_MIGRATIONS_ON_START
+        value: "false"
+      - key: DB_STARTUP_WAIT_SECONDS
+        value: "120"
+      - key: WEBHOOK_AUTO_REGISTER
+        value: "true"
+      - key: DATABASE_SSL
+        value: "true"
+      - key: NEON_STORAGE_FUNCTION_URL
+        value: "https://br-wild-cell-az3siwry-hendystorage.compute.c-3.ap-southeast-1.aws.neon.tech"
+      - key: NEON_STORAGE_FUNCTION_KEY
         sync: false
-      - key: ADMIN_PASSWORD
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: PORT
-        value: "10000"
+      - key: BANK_WEBHOOK_ENABLED
+        value: "false"
+      - key: WEBSOCKET_ENABLED
+        value: "false"
+      - key: VIDEO_WORKER_ENABLED
+        value: "false"
+      - key: TELEGRAM_INIT_DATA_MAX_AGE_SECONDS
+        value: "3600"

@@ -1,8 +1,8 @@
-.env
-.env.*
-!.env.example
-node_modules/
-coverage/
-.DS_Store
+/.env
+/.env.*
+!/.env.example
+/.neon
+/node_modules/
+/dist/
+/*.zip
 *.log
-npm-debug.log*

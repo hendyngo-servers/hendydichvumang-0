@@ -1,128 +1,146 @@
-# HENDY Multi-Agent Control Center
+# HENDY DIGITAL ECOSYSTEM
 
-Nền tảng điều phối AI Agent độc lập, dùng Node.js 22, Express 5, PostgreSQL và OpenAI Responses API. Ứng dụng có API, Admin Dashboard, Agent Registry, workflow tuần tự, PostgreSQL job queue và worker riêng.
+Production monorepo for one Telegram Bot backend and one public Static Website.
 
-## Tính năng
+## Production architecture
 
-- **Agent Registry:** tạo, chỉnh sửa system prompt, model override, thứ tự và bật/tắt Agent.
-- **Workflow Hub:** Research; Research → Content; Research → Sales; Research → Content → Video; Support. Mỗi workflow được lưu trong PostgreSQL.
-- **Task Queue:** hàng đợi PostgreSQL dùng `FOR UPDATE SKIP LOCKED`, tránh hai worker nhận cùng một công việc.
-- **Worker nền:** heartbeat, số lần thử, khôi phục task treo, lịch sử từng lượt chạy, token usage và event log.
-- **Admin Review:** bản nháp hoàn tất dừng ở `Chờ duyệt`. Duyệt/từ chối chỉ lưu quyết định quản trị.
-- **Audit Log:** ghi thao tác tạo/cập nhật Agent, tạo công việc và quyết định duyệt.
-- **Bảo mật:** cookie phiên HttpOnly, CSRF double-submit token, mật khẩu so sánh bằng scrypt, rate limit đăng nhập, Helmet CSP, giới hạn JSON body, SQL parameter binding.
+- **Static Site:** Render service name `hendydichvumang`, source `website/public/`.
+- **Current working Static Site URL:** `https://hendydichvumang-szad.onrender.com`.
+- **Telegram Bot:** Render service `hendydichvumang-telegram-bot`, built from `telegram-bot/Dockerfile`.
+- **Admin:** Browser-based Admin Dashboard is served from the authenticated Bot backend at `https://hendydichvumang-telegram-bot.onrender.com/admin`. Admin and customer UI files are stored in `website/telegram/`, outside the Static Site publish directory.
+- **PostgreSQL:** The Bot connects to the database selected by the path component of its Render `DATABASE_URL`. Do not infer the database name from the Neon project slug or repository name. Run `php bin/database-doctor.php` in the Bot Shell to print the active database name, role, host and migration status without revealing credentials.
 
-## Giới hạn tính năng hiện tại
+The clean hostname `https://hendydichvumang.onrender.com` currently resolves to the Bot API, not the Static Site. The Static Site therefore uses its verified Render subdomain with the `-szad` suffix until Render releases the old hostname. Do not point Website links or canonical metadata at the Bot API hostname.
 
-Đây là hệ thống điều phối và tạo bản nháp, không phải tác nhân tự động được cấp quyền làm việc ngoài hệ thống. Agent Research chỉ sử dụng tài liệu/ngữ cảnh Admin cung cấp, chưa có web search connector. Agent Video chỉ tạo kịch bản/storyboard, chưa render video. Sales không tự liên hệ khách; Support không gửi tin. Không có thanh toán, cộng/trừ số dư, hoàn tiền, phát OTP, cấp proxy, đăng bài hoặc cập nhật tài khoản thành viên.
+## Website
 
-## Cấu trúc
+Everything under `website/public/` is public static content: HTML, CSS, JavaScript, SVG, robots, sitemap and legal pages. It does not connect to PostgreSQL, process payments, or contain Bot credentials.
 
-```text
-.
-├── .github/workflows/ci.yml
-├── migrations/                 # SQL migrations chạy thủ công
-├── public/                     # Admin Dashboard responsive
-├── src/
-│   ├── auth.js                  # Session + CSRF
-│   ├── config.js                # Environment validation
-│   ├── db.js                    # PostgreSQL pool
-│   ├── migrate.js               # Migration runner
-│   ├── provider.js              # LLM provider adapter (OpenAI Responses API)
-│   ├── server.js                # REST API + Dashboard
-│   ├── worker-core.js           # Queue/Agent execution
-│   └── worker.js                # Background worker process
-├── test/
-├── Dockerfile
-├── render.yaml
-└── package.json
-```
+Public tabs: Trang chủ, App Store, Dịch vụ mạng, AI Studio, Code Telegram, Giới thiệu. The public navigation intentionally does not expose "Trung tâm khách hàng".
 
-## Chạy local
+## Telegram Bot
 
-Yêu cầu Node.js 22+ và PostgreSQL 14+.
+- Exactly one production Bot is supported; only `BOT1_TOKEN` is read.
+- The webhook bootstrap calls Telegram `getMe()`, registers and verifies the webhook at the Bot service's own Render URL, then stores the public Bot username in `app_settings.primary_bot_url`.
+- `BOT1_PUBLIC_URL` is an optional override; referral links otherwise use the auto-detected Bot URL.
+- One-time login tickets are short-lived, stored hashed, consumed atomically, and exchanged for a signed HttpOnly website-session cookie.
+- Admin access requires the user's Telegram numeric ID to be in `ADMIN_ID` or `ADMIN_IDS`.
 
-```bash
-cp .env.example .env
-# Chỉnh DATABASE_URL, ADMIN_PASSWORD, ADMIN_PASSWORD_SALT, SESSION_SECRET
-npm ci
-npm run migrate
-npm test
-npm start
-```
+## Admin Control Center
 
-Mở `http://localhost:10000`. Mặc định tên đăng nhập là `admin`; mật khẩu lấy từ `ADMIN_PASSWORD`.
+The Admin Dashboard is a browser-first control plane protected by the Telegram Admin allowlist. It includes:
+- Member accounts and linked accounts, manual wallet adjustments with audit entries, orders, deposit approvals, customer tickets and vouchers.
+- Product/catalog editing, Giftcode, Bot menu labels/descriptions/styles, shared configuration and community links.
+- Bot operations: normal mode, maintenance, upgrade window, scheduled end time and operator message. Admin accounts remain able to enter during maintenance.
+- HomeProxy enable/disable, encrypted member key management, video/Code Telegram job operations, module review, AI Studio controls and AI Cover licensed-preset management.
+- Audit log for administrative changes.
 
-Sinh secret an toàn bằng Node.js:
+Do not use a manual wallet adjustment as a substitute for payment reconciliation. Deposit requests must be matched to bank evidence before approval.
 
-```bash
-node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
-```
+## AI Features
 
-Chạy lệnh riêng cho từng biến `ADMIN_PASSWORD`, `ADMIN_PASSWORD_SALT` và `SESSION_SECRET`; không dùng chung giá trị, không commit `.env`. Provider sử dụng endpoint `/v1/responses`; model mặc định có thể thay bằng model được bật trong dự án API.
+The Telegram main menu groups creative tools under **🤖 TÍNH NĂNG AI**:
+- **AI Cover:** licensed RVC voice presets, owner consent and license reference, private Neon Object Storage, verified worker and HMAC callback. At least one enabled preset must pass a recent worker check before member access can open.
+- **Tạo âm nhạc AI:** prompt → PostgreSQL job queue → ElevenLabs Music worker → send audio back to the same Telegram user.
+- **Chỉnh sửa ảnh AI:** prompt + private Telegram photo → PostgreSQL job queue → OpenAI image edit → send edited image to the user.
 
-## Cấu hình worker và model
+AI provider keys are secrets and must only be configured in Render Environment. The Admin Dashboard never displays these values. AI_MEDIA_QUEUE_ENABLED=false, AI_COVER_ENABLED=false and AI_COVER_WORKER_ENABLED=false are fail-closed defaults. After provider credentials and worker are configured, an Admin must enable AI Studio globally and then enable each tool separately. AI Cover additionally requires a working RVC worker, callback HMAC secret, Neon Object Storage and a verified licensed preset.
 
-Worker mặc định tắt. Sau khi API và database sẵn sàng, đặt trong môi trường server:
+AI tools currently have a per-user daily job limit and one active job per user. Automatic AI wallet billing is not enabled; users are not charged for these tasks. Do not advertise paid AI packages until an explicit price/ledger flow has been implemented and tested.
 
-```env
-OPENAI_API_KEY=<secret-do-chu-so-huu-cap>
-OPENAI_MODEL=gpt-6.2-astra
-MULTI_AGENT_ENABLED=true
-MULTI_AGENT_WORKER_POLL_SECONDS=5
-MULTI_AGENT_MAX_ATTEMPTS=3
-MULTI_AGENT_STALE_MINUTES=15
-MULTI_AGENT_CONCURRENCY=1
-```
+The /ai command opens the AI submenu. The /cancel command clears the current prompt/photo input. Image and audio workflows are restricted to private Bot chats.
 
-API key chỉ được đọc bởi worker phía máy chủ; không lưu trong PostgreSQL, không gửi xuống browser và không đặt trong GitHub source. Model có thể chỉnh trong `OPENAI_MODEL` hoặc `model_override` của từng Agent. Nếu dùng endpoint tương thích OpenAI khác, chỉnh `OPENAI_BASE_URL`.
+## Database reset and recovery
 
-## Deploy Render
+On 2026-11-13, records were cleared from the `public` schema of both `hendydichvumang` and `hendydichvumang_website`; tables and constraints were retained. Neon Auth database `neondb` was not changed.
 
-Blueprint `render.yaml` tạo một Web Service và một Background Worker dùng chung các cấu hình không nhạy cảm qua Environment Group. Cả hai dùng cùng image Docker. Blueprint không tạo hoặc thay thế database.
+Recovery branch retained in Neon:
+`backup-before-full-reset-2026-11-13`.
 
-1. Tạo PostgreSQL database riêng (hoặc dùng database đã được chuẩn bị cho ứng dụng mới) và lưu connection string trong biến bí mật `DATABASE_URL`.
-2. Tạo Blueprint từ repository này và kiểm tra kỹ hai service trước khi Apply.
-3. Khi Render hỏi giá trị cho từng service, nhập cùng một `DATABASE_URL`, `ADMIN_PASSWORD` và `OPENAI_API_KEY` cho cả API lẫn Worker. Các biến bí mật này được khai báo riêng trong từng service; không nhập chúng vào GitHub hoặc file source. `ADMIN_PASSWORD_SALT` và `SESSION_SECRET` được sinh tự động trong Environment Group và được dùng chung.
-4. Sau khi API đã deploy, mở Shell của Web Service và chạy `npm run migrate` đúng một lần. Không đặt `RUN_MIGRATIONS_ON_START=true`; migration không tự chạy lúc boot.
-5. Mở `https://<api-domain>/healthz`, xác nhận `status=ok` và `database=ready`.
-6. Đăng nhập Admin và kiểm tra Agent/Workflow.
-7. Chỉ khi đã sẵn sàng mới bật `MULTI_AGENT_ENABLED=true` trong Environment Group và redeploy cả API lẫn Worker. Worker sẽ cần `OPENAI_API_KEY` hợp lệ.
-8. Xác nhận Worker có heartbeat và thử một task không nhạy cảm.
+The Bot base schema remains in `telegram-bot/database/schema.sql`; additive changes are versioned under `telegram-bot/database/migrations/`. Runtime uses `RUN_MIGRATIONS_ON_START=false`; the Bot runtime role performs DML only, while a separate direct database-owner/migration URL is used for reviewed schema changes.
 
-Render Background Worker cần instance plan hỗ trợ Worker. Blueprint bỏ trống `plan` để Render áp dụng compute plan mặc định cho service; Worker là background service riêng và cần compute plan được Render hỗ trợ. Kiểm tra plan hiển thị trong Blueprint trước khi Apply.
+## Product and provider activation
 
-## API quản trị
+The Admin product form records supplier identity, supplier product reference, source/rights evidence, verification states and the Environment variable NAME only. Public product lists and both checkout paths fail closed until the source permission is authorized, supplier access is verified, evidence URLs are HTTPS, stock is available and manual fulfillment is selected. API fulfillment stays locked until a dedicated tested adapter exists.
 
-| Method | Path | Mục đích |
-|---|---|---|
-| GET | `/healthz` | Health check + PostgreSQL |
-| POST | `/api/auth/login` | Đăng nhập Admin |
-| GET | `/api/auth/me` | Kiểm tra session + lấy CSRF token |
-| POST | `/api/auth/logout` | Đăng xuất |
-| GET | `/api/dashboard` | Thống kê công việc, Worker |
-| GET/POST | `/api/agents` | Liệt kê/tạo Agent |
-| PATCH | `/api/agents/:key` | Cập nhật Agent |
-| GET/POST | `/api/workflows` | Liệt kê/tạo workflow |
-| PATCH | `/api/workflows/:key` | Cập nhật workflow |
-| GET/POST | `/api/tasks` | Liệt kê/tạo công việc |
-| GET | `/api/tasks/:id` | Chi tiết, runs, events |
-| POST | `/api/tasks/:id/approve` | Ghi nhận duyệt |
-| POST | `/api/tasks/:id/reject` | Ghi nhận từ chối |
-| POST | `/api/tasks/:id/retry` | Đưa task lỗi về hàng đợi |
-| GET | `/api/audit` | Nhật ký quản trị |
+Before deploying this readiness change to an existing Neon database, follow [the safe migration and provider onboarding checklist](docs/product-provider-onboarding.md) using the database owner/migration role. Production intentionally keeps `RUN_MIGRATIONS_ON_START=false`; CI success alone does not apply a production migration.
 
-Mọi route quản trị yêu cầu session. Các request POST/PATCH cần gửi header `X-CSRF-Token` tương ứng cookie CSRF.
+## Provider & Service Registry
 
-## Database và dữ liệu
+The existing browser Admin at `/admin` now includes a Provider & Service Registry
+for the service inventory, supplier records, adapter family, Environment variable
+names, API-level service locks and maintenance messages. Provider credentials remain
+in Render Environment; the dashboard never reads or returns their values. The
+configuration check is local only and does not claim a live provider API test.
 
-Migration `001_init.sql` tạo schema mới, migration `002_seed_agents.sql` seed Agent/Workflow mẫu. Các migration chạy tường minh qua `npm run migrate`, không tự áp dụng khi API khởi động. Không trỏ ứng dụng mới vào database nghiệp vụ hiện có của Bot/Website nếu chưa có kế hoạch backup và tách dữ liệu.
+Before deploying the registry change, apply
+`telegram-bot/database/migrations/20261113_provider_service_registry.sql` to Neon
+using the database owner/migration role. Production keeps
+`RUN_MIGRATIONS_ON_START=false`. See
+[Provider & Service Registry rollout](docs/provider-service-registry.md) for the
+migration, controls and provider activation checklist.
 
-## Kiểm thử
+## Render environment
+
+Set secrets only in Render Environment. Never commit live credentials.
+
+Required Bot values:
+- `BOT1_TOKEN`
+- `ADMIN_ID` or `ADMIN_IDS`
+- `DATABASE_URL` pointing to the explicitly selected PostgreSQL database for this Bot service (verify with `php bin/database-doctor.php`)
+- `DATABASE_SSL=true`
+
+Set `WEBSITE_PUBLIC_URL=https://hendydichvumang-szad.onrender.com`. Render injects `RENDER_EXTERNAL_URL` for the Bot; webhook registration uses that service-owned URL. Optional bank, AI, OCR and WebSocket integrations stay disabled until provider credentials and migrations are verified.
+
+## Database diagnostics and migrations
+
+Use the Render Bot service Shell to identify the database actually referenced by its environment:
 
 ```bash
-npm ci
-npm test
+cd /var/www/app
+php bin/database-doctor.php
 ```
 
-GitHub Actions chạy Node.js 22 và PostgreSQL test riêng, áp migrations vào database CI rồi chạy kiểm thử API, auth, CSRF và task flow. CI không dùng database production hay secrets production.
+The doctor is read-only. It prints only the database name, role, host, connection-pool status and migration inventory; it never prints connection strings or secret values.
+
+Before a migration, make a Neon restore point and obtain the direct/unpooled owner URL for the confirmed database. Set it only in the one-off Shell process as `MIGRATION_DATABASE_URL`, then run the dry-run:
+
+```bash
+export MIGRATION_DATABASE_URL='[direct owner URL supplied privately by the operator]'
+php bin/migrate.php
+```
+
+Review the printed database name, role, host and pending migrations. Only after the target is confirmed, apply using its exact database name:
+
+```bash
+php bin/migrate.php --apply --expect-database='[confirmed database name]'
+```
+
+The migration runner rejects pooled Neon URLs, the restricted `hendy_bot_app` role, database-name mismatches, partial base schemas and migration checksum drift. Each additive migration runs in its own transaction and is recorded in `schema_migrations`. The command defaults to dry-run and does not print the URL.
+
+
+## Ubuntu 26.04 VPS deployment (alternative)
+
+The VPS option reuses the same PHP Bot/API, PostgreSQL data model, member wallet,
+orders, Provider Registry and Supplier Readiness already present in this monorepo.
+It does not create a second bot backend or a separate wallet database. See
+[Ubuntu 26.04 deployment guide](deploy/ubuntu/README.md).
+
+The VPS is an alternative to the current Render Bot service. Keep
+`WEBHOOK_AUTO_REGISTER=false` during initial validation and follow the documented
+single-webhook cutover before switching the production Telegram bot token.
+Production schema migrations remain manual and must follow the existing database
+owner runbooks; ordinary startup keeps `RUN_MIGRATIONS_ON_START=false`.
+
+## Local development
+
+1. Copy `telegram-bot/.env.example` to `telegram-bot/.env`.
+2. Populate credentials locally; never commit `.env`.
+3. Run `composer install` in `telegram-bot/`.
+4. Run `composer validate-config`, `composer lint` and `composer test`.
+
+## Multi-Agent Control Center
+
+The authenticated Admin Dashboard now includes a PostgreSQL-backed Agent Registry, sequential Hub workflows, queue/run/event history, worker heartbeat and a human approval queue. Workflows include Research → Content, Research → Sales, Research → Content → Video, Support-only and a selected custom Agent. Results remain drafts and require Admin approval; the module does not publish, send Telegram messages, charge the wallet or modify customer records.
+
+The worker is disabled by default. Apply the additive migration telegram-bot/database/migrations/20261120_multi_agent_control_center.sql with the existing owner-role migration runbook first. Then configure OPENAI_API_KEY and explicitly set MULTI_AGENT_ENABLED=true in the Bot Render Environment. See docs/MULTI-AGENT-CONTROL-CENTER.md. Keep RUN_MIGRATIONS_ON_START=false.

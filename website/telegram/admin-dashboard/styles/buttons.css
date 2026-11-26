@@ -1,0 +1,205 @@
+:root {
+  --btn-primary-start: #147ff4;
+  --btn-primary-end: #4d4ee8;
+  --btn-success-start: #16bd82;
+  --btn-success-end: #078f79;
+  --btn-danger-start: #f06478;
+  --btn-danger-end: #d93e66;
+  --btn-neutral-bg: #edf3ff;
+  --btn-neutral-text: #3159bd;
+  --btn-focus: rgba(53,112,232,.28);
+}
+
+/* Bảng màu tập trung cho tất cả nút Website HENDY. Chỉnh token tại :root. */
+button {
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .16s ease, filter .16s ease, box-shadow .16s ease, background .16s ease;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+button:focus-visible {
+  outline: 3px solid var(--btn-focus);
+  outline-offset: 2px;
+}
+button:active:not(:disabled) {
+  transform: translateY(1px) scale(.985);
+  filter: brightness(.97);
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+  box-shadow: none;
+}
+.primary {
+  color: #fff;
+  background: linear-gradient(115deg,var(--btn-primary-start),var(--btn-primary-end));
+  box-shadow: 0 7px 15px rgba(43,91,215,.24);
+}
+.secondary,.tiny-btn {
+  color: var(--btn-neutral-text);
+  background: var(--btn-neutral-bg);
+  border: 1px solid #d8e4ff;
+}
+.danger {
+  color: #fff;
+  background: linear-gradient(115deg,var(--btn-danger-start),var(--btn-danger-end));
+  box-shadow: 0 7px 15px rgba(217,62,102,.2);
+}
+.service-tile.g-blue { background: linear-gradient(135deg,#138af9,#3456e8); }
+.service-tile.g-violet { background: linear-gradient(135deg,#a347f5,#642cce); }
+.service-tile.g-green { background: linear-gradient(135deg,#18c78b,#0a9f79); }
+.service-tile.g-orange { background: linear-gradient(135deg,#ffb34d,#ed7628); }
+.service-tile.g-pink { background: linear-gradient(135deg,#fb73b4,#de3d87); }
+.service-tile.g-cyan { background: linear-gradient(135deg,#32cde4,#1688c8); }
+.service-tile.g-gold { background: linear-gradient(135deg,#ffce52,#e99519); }
+.service-tile.g-navy { background: linear-gradient(135deg,#354c91,#16295f); }
+.service-tile:hover { filter:brightness(1.04); box-shadow:0 12px 23px rgba(34,62,121,.23); }
+.tab.active {
+  background:linear-gradient(115deg,var(--btn-primary-start),var(--btn-primary-end));
+  border-color:transparent;
+  color:#fff;
+}
+.admin-tab.active {
+  background:linear-gradient(115deg,#192d65,#344c91);
+  border-color:transparent;
+  color:#fff;
+}
+.nav-btn.active { color:#245bd0; background:#e8efff; }
+.icon-btn { color:#36568e; background:#fff; border:1px solid #dce5ff; }
+button:not(:disabled):hover { filter:brightness(1.035); }
+
+/* Ripple interaction layer */
+.ripple { 
+  position: absolute; 
+  z-index: 0; 
+  border-radius: 50%; 
+  pointer-events: none; 
+  transform: scale(0); 
+  background: rgba(255,255,255,.38); 
+  animation: ripple-effect 600ms linear; 
+}
+.secondary .ripple, .tiny-btn .ripple, .icon-btn .ripple, .nav-btn .ripple, .admin-tab .ripple { 
+  background: rgba(20,50,110,.16); 
+}
+@keyframes ripple-effect { 
+  to { transform: scale(4); opacity: 0; } 
+}
+button.is-loading { opacity: .72; cursor: wait; pointer-events: none; }
+button.is-loading::after { 
+  content: ''; 
+  width: 14px; 
+  height: 14px; 
+  margin-left: 8px; 
+  border: 2px solid currentColor; 
+  border-right-color: transparent; 
+  border-radius: 50%; 
+  animation: button-spin .7s linear infinite; 
+}
+button.is-success { background: linear-gradient(115deg,var(--btn-success-start),var(--btn-success-end)); color: #fff; }
+@keyframes button-spin { to { transform: rotate(360deg); } }
+
+/* ==========================================================================
+   CẤU HÌNH ICON ĐỘNG (ANIMATED ICONS)
+   ========================================================================== */
+.animated-icon {
+  display: inline-block;
+  vertical-align: middle;
+  transform-origin: center;
+  transition: transform 0.2s ease;
+}
+
+/* Xoay tròn liên tục (⚙️ Cài đặt) */
+.animated-icon.icon-spin, .animated-icon[data-icon="⚙️"] { animation: icon-spin 4s linear infinite; }
+
+/* Nhấp nháy / Chớp điện (⚡, 💎, 🎟️) */
+.animated-icon.icon-flash, .animated-icon[data-icon="⚡"], .animated-icon[data-icon="💎"], .animated-icon[data-icon="🎟️"] { animation: icon-flash 1.8s ease-in-out infinite; }
+
+/* Bay lên / Bắn (🚀 Tên lửa) */
+.animated-icon.icon-rocket, .animated-icon[data-icon="🚀"] { animation: icon-rocket 2s ease-in-out infinite; }
+
+/* Nảy nhẹ (🎁, 🏆, 👑) */
+.animated-icon.icon-bounce, .animated-icon[data-icon="🎁"], .animated-icon[data-icon="🏆"], .animated-icon[data-icon="👑"] { animation: icon-bounce 2s infinite; }
+
+/* Đung đưa / Lắc nhẹ (🧰, 🎛️, 💳) */
+.animated-icon.icon-swing, .animated-icon[data-icon="🧰"], .animated-icon[data-icon="🎛️"], .animated-icon[data-icon="💳"] { animation: icon-swing 2.5s ease-in-out infinite; }
+
+/* Kiếm va chạm (⚔️ Chiến đấu) */
+.animated-icon.icon-clash, .animated-icon[data-icon="⚔️"] { animation: icon-clash 1.5s ease-in-out infinite; }
+
+/* Phóng to thu nhỏ nhẹ (🎬, 🎊) */
+.animated-icon.icon-pulse, .animated-icon[data-icon="🎬"], .animated-icon[data-icon="🎊"] { animation: icon-pulse 1.6s ease-in-out infinite; }
+
+/* Sóng âm / Phát thanh (🗣️, 📢) */
+.animated-icon.icon-wave, .animated-icon[data-icon="🗣️"], .animated-icon[data-icon="📢"] { animation: icon-wave 1.4s ease-in-out infinite; }
+
+/* Lập trình / Gõ phím (🧑‍💻) */
+.animated-icon.icon-tech, .animated-icon[data-icon="🧑‍💻"] { animation: icon-tech 1.8s ease-in-out infinite; }
+
+/* Tăng tốc độ chuyển động khi Hover nút */
+button:hover .animated-icon, .service-tile:hover .animated-icon {
+  animation-duration: 0.8s !important;
+}
+
+/* Keyframes Chuyển động */
+@keyframes icon-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes icon-flash { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.65; transform: scale(1.15); } }
+@keyframes icon-rocket { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-4px) translateX(2px) scale(1.08); } }
+@keyframes icon-bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-5px); } 60% { transform: translateY(-2px); } }
+@keyframes icon-swing { 0%, 100% { transform: rotate(0deg); } 20% { transform: rotate(8deg); } 40% { transform: rotate(-8deg); } 60% { transform: rotate(4deg); } 80% { transform: rotate(-4deg); } }
+@keyframes icon-clash { 0%, 100% { transform: scale(1) rotate(0deg); } 30% { transform: scale(1.2) rotate(-10deg); } 50% { transform: scale(0.9) rotate(10deg); } }
+@keyframes icon-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@keyframes icon-wave { 0%, 100% { transform: scale(1) rotate(0deg); } 25% { transform: scale(1.05) rotate(-5deg); } 75% { transform: scale(1.05) rotate(5deg); } }
+@keyframes icon-tech { 0%, 100% { transform: translateY(0); } 25% { transform: translateY(-2px) rotate(-3deg); } 75% { transform: translateY(1px) rotate(3deg); } }
+
+@media (prefers-reduced-motion:reduce) { 
+  .ripple, button.is-loading::after, .animated-icon { 
+    animation-duration: .01ms !important; 
+    animation-iteration-count: 1 !important;
+  } 
+}
+
+
+/* HENDY dynamic welcome typography */
+.hendy-home-hero { position:relative; overflow:hidden; isolation:isolate; }
+.hendy-home-hero::after { content:'✦'; position:absolute; right:18px; top:12px; color:#ffd66c; font-size:34px; text-shadow:0 0 18px rgba(255,196,63,.9); animation:vip-pro-twinkle 2.4s ease-in-out infinite; }
+.hendy-welcome-title { background:linear-gradient(90deg,#fff 0%,#ffe08a 35%,#fff 65%,#a7dfff 100%); background-size:220% auto; -webkit-background-clip:text; background-clip:text; color:transparent; animation:hendy-title-shimmer 5s linear infinite; }
+.hendy-dynamic-slogan { min-height:1.5em; color:#ffe49a; font-weight:800; letter-spacing:.02em; text-shadow:0 0 14px rgba(255,192,64,.28); transition:opacity .28s ease,transform .28s ease; }
+.hendy-dynamic-slogan.is-changing { opacity:0; transform:translateY(7px); }
+.hendy-hero-chip { display:inline-flex; margin-top:5px; padding:5px 10px; border:1px solid rgba(255,213,109,.35); border-radius:999px; color:#ffe6a2; background:rgba(8,15,40,.18); font-size:10px; font-weight:850; letter-spacing:.12em; }
+@keyframes hendy-title-shimmer { to { background-position:220% center; } }
+@keyframes vip-pro-twinkle { 0%,100% { transform:scale(.85) rotate(0);opacity:.65; } 50% { transform:scale(1.16) rotate(22deg);opacity:1; } }
+
+/* VIP PRO premium member card; scoped so existing service button colors stay untouched. */
+.vip-pro-card { position:relative; isolation:isolate; overflow:hidden; padding:20px; margin:4px 0 16px; border-radius:22px; color:#fff7dc; background:radial-gradient(ellipse at 85% 10%,rgba(81,146,255,.35),transparent 36%),radial-gradient(ellipse at 10% 100%,rgba(177,78,255,.25),transparent 40%),linear-gradient(135deg,#07132d 0%,#101a40 47%,#241349 100%); border:1px solid rgba(255,206,97,.58); box-shadow:0 18px 36px rgba(8,13,42,.32),inset 0 0 28px rgba(106,137,255,.11); }
+.vip-pro-card::before { content:''; position:absolute; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(115deg,transparent 25%,rgba(255,255,255,.09) 45%,transparent 62%); transform:translateX(-110%); animation:vip-pro-sheen 6s ease-in-out infinite; }
+.vip-pro-glow { position:absolute; width:150px; height:150px; border-radius:50%; filter:blur(34px); opacity:.3; z-index:-1; pointer-events:none; }
+.vip-pro-glow-one { right:-55px; top:-70px; background:#f5b93d; }
+.vip-pro-glow-two { left:-65px; bottom:-90px; background:#567aff; }
+.vip-pro-top,.vip-pro-rank-row,.vip-pro-progress-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.vip-pro-chip,.vip-pro-live { font-size:9px; font-weight:900; letter-spacing:.14em; }
+.vip-pro-chip { color:#17203d; background:linear-gradient(90deg,#fff0aa,#f6bb42); border-radius:999px; padding:6px 10px; }
+.vip-pro-live { color:#9ee8ff; }
+.vip-pro-main { display:flex; align-items:center; gap:14px; margin:20px 0 16px; }
+.vip-pro-emblem { width:82px; height:82px; display:grid; place-items:center; flex:0 0 82px; border-radius:22px; background:radial-gradient(circle,#fff4c8 0%,#f4c157 39%,#8c4f13 72%,transparent 74%); box-shadow:0 0 26px rgba(255,192,54,.42); animation:vip-pro-float 4s ease-in-out infinite; }
+.vip-pro-emblem svg { width:76px; height:76px; filter:drop-shadow(0 5px 7px rgba(0,0,0,.4)); }
+.vip-pro-kicker { color:#a4dcff; font-size:9px; letter-spacing:.2em; font-weight:900; }
+.vip-pro-main h2 { margin:2px 0; color:#fff4bd; font-size:34px; line-height:1; font-weight:1000; letter-spacing:.06em; text-shadow:0 0 18px rgba(255,189,55,.45); }
+.vip-pro-main h2 em { color:#ffd166; font-style:normal; }
+.vip-pro-main p { margin:5px 0 0; color:#c7d7ff; font-size:9px; font-weight:850; letter-spacing:.08em; }
+.vip-pro-rank-row { padding:10px 0; border-top:1px solid rgba(255,219,129,.24); border-bottom:1px solid rgba(255,219,129,.24); }
+.vip-pro-rank-row span,.vip-pro-progress-head span { color:#b9caff; font-size:9px; font-weight:900; letter-spacing:.13em; }
+.vip-pro-rank-row strong { color:#ffe49a; font-size:13px; }
+.vip-pro-progress-head { margin-top:15px; }
+.vip-pro-progress-head b { color:#ffe08a; font-size:13px; }
+.vip-pro-progress { height:9px; overflow:hidden; margin-top:7px; border-radius:99px; background:rgba(2,7,24,.72); border:1px solid rgba(255,224,151,.2); }
+.vip-pro-progress span { display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,#44c6ff,#887aff,#ffd36e); box-shadow:0 0 15px rgba(95,177,255,.7); transition:width .65s ease; }
+.vip-pro-next { margin:7px 0 0; color:#d4ddff; font-size:11px; }
+.vip-pro-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:17px; }
+.vip-pro-stats>div { min-width:0; padding:9px 7px; border-radius:12px; background:rgba(255,255,255,.07); border:1px solid rgba(255,224,151,.14); }
+.vip-pro-stats small { display:block; color:#aebce0; font-size:8px; line-height:1.3; letter-spacing:.07em; }
+.vip-pro-stats b { display:block; margin-top:5px; color:#fff0be; font-size:11px; overflow-wrap:anywhere; }
+@keyframes vip-pro-sheen { 0%,60% { transform:translateX(-110%); } 100% { transform:translateX(110%); } }
+@keyframes vip-pro-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-5px); } }
+@keyframes vip-pro-twinkle { 0%,100% { transform:scale(.85);opacity:.65; } 50% { transform:scale(1.16);opacity:1; } }
+@media (prefers-reduced-motion:reduce) { .hendy-welcome-title,.hendy-home-hero::after,.vip-pro-card::before,.vip-pro-emblem { animation:none !important; } }
