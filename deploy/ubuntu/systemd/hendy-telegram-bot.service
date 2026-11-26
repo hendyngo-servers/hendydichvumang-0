@@ -1,5 +1,5 @@
 [Unit]
-Description=HENDY Telegram Bot and Website API (Docker Compose)
+Description=HENDY Telegram Bot, Website and API (Docker Compose)
 Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target
@@ -8,9 +8,11 @@ Wants=network-online.target
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=__HENDY_REPO_DIR__/deploy/ubuntu
-ExecStart=/usr/bin/docker compose --env-file hendy.env up -d --build --remove-orphans
-ExecStop=/usr/bin/docker compose --env-file hendy.env down
+ExecStartPre=/usr/bin/docker compose --env-file hendy.env config --quiet
+ExecStart=/usr/bin/docker compose --env-file hendy.env up -d --remove-orphans
+ExecStop=/usr/bin/docker compose --env-file hendy.env stop --timeout 30
 TimeoutStartSec=0
+TimeoutStopSec=60
 
 [Install]
 WantedBy=multi-user.target
