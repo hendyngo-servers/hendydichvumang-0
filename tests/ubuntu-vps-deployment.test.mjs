@@ -13,6 +13,7 @@ const installer = readFileSync('deploy/ubuntu/install-service.sh', 'utf8');
 const updater = readFileSync('deploy/ubuntu/update.sh', 'utf8');
 const rollback = readFileSync('deploy/ubuntu/rollback.sh', 'utf8');
 const guide = readFileSync('deploy/ubuntu/README.md', 'utf8');
+const envSchema = JSON.parse(readFileSync('telegram-bot/config/env.schema.json', 'utf8'));
 
 test('Ubuntu Compose serves a single-origin application and does not publish Apache directly', () => {
   assert.match(compose, /hendy-app:/);
@@ -23,6 +24,15 @@ test('Ubuntu Compose serves a single-origin application and does not publish Apa
   assert.doesNotMatch(compose, /ports:[\s\S]*?10000:/);
   assert.match(compose, /WEBSITE_PUBLIC_URL:/);
   assert.match(compose, /HENDY_INLINE_WORKERS: "false"/);
+  assert.match(compose, /header_up Host \{http.request.host\}/) === false; // Caddy config is validated in its dedicated assertion below.
+});
+
+test('Caddy preserves the public Website hostname and configures HTTPS hardening', () => {
+  const caddy = readFileSync('deploy/ubuntu/Caddyfile', 'utf8');
+  assert.match(caddy, /reverse_proxy hendy-app:10000/);
+  assert.match(caddy, /header_up Host \{http.request.host\}/);
+  assert.match(caddy, /Strict-Transport-Security/);
+  assert.match(caddy, /-Server/);
 });
 
 test('queue workers are separate, opt-in and run without root', () => {
@@ -49,6 +59,9 @@ test('production VPS env is safe by default and shares one HTTPS origin', () => 
   assert.match(envExample, /^BANK_WEBHOOK_ENABLED=false$/m);
   assert.match(envExample, /^MULTI_AGENT_ENABLED=false$/m);
   assert.match(envExample, /^DATABASE_URL=$/m);
+  assert.ok(envSchema.variables.APP_URL);
+  assert.ok(envSchema.variables.WEBSITE_PUBLIC_URL);
+  assert.ok(envSchema.variables.MULTI_AGENT_ENABLED);
   assert.doesNotMatch(envExample, /\b[0-9]{8,12}:[A-Za-z0-9_-]{30,}\b/);
 });
 
@@ -57,7 +70,7 @@ test('PHP serves local Website assets on the same VPS origin without a redirect 
   assert.match(appEntry, /website\/public/);
   assert.match(appEntry, /str_starts_with\(\$candidate, \$rootPrefix\)/);
   assert.match(appEntry, /\$reservedPrefixes/);
-  assert.match(appEntry, /'/); // source is PHP and the static resolver remains in the front controller
+  assert.match(appEntry, /str_contains\(\$relativePath, "\\0"\)/);
   assert.match(appEntry, /websiteUrl/);
 });
 
