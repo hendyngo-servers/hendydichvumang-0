@@ -1,0 +1,95 @@
+name: HENDY monorepo CI
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-website:
+    name: Static Website validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate browser JavaScript
+        run: node scripts/validate-web-scripts.mjs
+      - name: Test central Website API deployment override
+        run: node --test tests/site-deployment-config.test.mjs
+      - name: Validate published assets
+        run: |
+          test -s website/public/index.html
+          test -s website/public/assets/deployment-config.js
+          grep -q 'deployment-config.js' website/public/index.html
+          grep -q 'deployment-config.js' website/public/app-store/index.html
+          grep -q 'deployment-config.js' website/public/miniapp/index.html
+          test -s website/public/healthz.html
+          test -s website/public/robots.txt
+          test -s website/public/sitemap.xml
+          test -s website/public/app-store/index.html
+          test -s website/public/app-store/style.css
+          test -s website/public/app-store/app.js
+          test -s website/public/app-store/config.js
+          grep -q 'HENDY APP STORE' website/public/app-store/index.html
+          grep -q '/api/public/releases' website/public/app-store/app.js
+          ! find website/public -type f -name '*.php' | grep .
+          ! find website/public -type f \( -name '*.env' -o -name '*.sql' -o -name '*.pem' -o -name '*.key' \) | grep .
+          grep -q 'HENDY DIGITAL' website/public/index.html
+          grep -q 'https://hendydichvumang-szad.onrender.com/' website/public/index.html
+          grep -q 'hendydichvumang-szad.onrender.com/sitemap.xml' website/public/robots.txt
+          grep -q 'hendydichvumang-szad.onrender.com/' website/public/sitemap.xml
+          ! grep -R -q 'https://hendydichvumang.onrender.com' website/public
+          ! grep -q 'hendydichvumang-telegram-bot.onrender.com/admin' website/public/index.html
+          ! grep -q 'href="/admin' website/public/index.html
+  telegram-bot:
+    name: Telegram Bot lint and tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: telegram-bot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: curl, mbstring, pdo, pdo_pgsql
+          coverage: none
+      - run: composer validate --no-check-publish
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: composer lint
+      - run: composer test
+      - run: php scripts/secret-scan.php
+  ubuntu-deployment:
+    name: Ubuntu 26.04 deployment validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deployment shell scripts
+        run: |
+          bash -n deploy/ubuntu/install-docker.sh
+          bash -n deploy/ubuntu/install-service.sh
+          bash -n deploy/ubuntu/update.sh
+          bash -n deploy/ubuntu/verify.sh
+      - name: Validate Docker Compose model
+        run: |
+          docker compose version
+          cp deploy/ubuntu/hendy.env.example deploy/ubuntu/hendy.env
+          docker compose --env-file deploy/ubuntu/hendy.env -f deploy/ubuntu/compose.yaml config --quiet
+          rm deploy/ubuntu/hendy.env
+  neon-runtime:
+    name: Neon Function build and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - run: npm test
