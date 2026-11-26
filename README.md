@@ -2,6 +2,10 @@
 
 Production monorepo for one Telegram Bot backend and one public Static Website.
 
+## Ubuntu 26.04 VPS deployment target
+
+This repository includes a Docker Compose + Caddy + systemd deployment for Ubuntu 26.04 LTS amd64. See `deploy/ubuntu/README.md`. The VPS path is prepared but is not live until the owner supplies the VPS domain/DNS and runtime secrets, verifies the existing PostgreSQL database, and performs the explicit webhook cutover. The initial VPS configuration keeps `WEBHOOK_AUTO_REGISTER=false` and `RUN_MIGRATIONS_ON_START=false`; it does not reset or migrate production data. Existing Render configuration is retained as a fallback/reference and is not changed by this source PR.
+
 ## Production architecture
 
 - **Static Site:** Render service name `hendydichvumang`, source `website/public/`.
